@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchRequests } from '../../services/requestApi';
 import RequestDetails from '../../components/farmer/RequestDetails';
 import LanguageSelection from '../../components/common/LanguageSelection';
+// import Recommendation from "../../components/Recommendation/Recommendation";
 
 function FarmerDashboard() {
   const navigate = useNavigate();
@@ -43,6 +44,11 @@ function FarmerDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <h1 className="text-2xl font-bold mb-4">Available Requests 🌾</h1>
+
+      {/* ✅ ADDED (ONLY THIS COMPONENT)
+      <div className="mb-8">
+        <Recommendation />
+      </div> */}
 
       <input
         type="text"

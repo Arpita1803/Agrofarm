@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RequestForm from '../../components/dealer/RequestForm';
+// import DealerPriceRecommendation from "./DealerPriceRecommendation";
 
 // Mock data for categories and products
 const categories = [
@@ -60,6 +61,14 @@ const categories = [
     ]
   }
 ];
+// function DealerDashboard() {
+//   return (
+//     <div>
+//       <h1>Dealer Dashboard</h1>
+//       <DealerPriceRecommendation />
+//     </div>
+//   );
+// }
 
 function DealerDashboard() {
   const navigate = useNavigate();
