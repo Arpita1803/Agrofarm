@@ -4,7 +4,7 @@ function DealerPriceRecommendation() {
   const [formData, setFormData] = useState({
     crop: "",
     district: "",
-    month: "",
+    month: ""
   });
 
   const [price, setPrice] = useState(null);
@@ -33,55 +33,59 @@ function DealerPriceRecommendation() {
       } else {
         setPrice(data.predicted_price);
       }
-    } catch (err) {
-      setError("Backend not running");
+    } catch {
+      setError("ML backend not running");
     }
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Price Recommendation</h2>
+    <div className="max-w-md mx-auto bg-white p-6 rounded-xl shadow">
+      <h2 className="text-xl font-bold mb-4">Price Prediction</h2>
 
-      <form onSubmit={handleSubmit}>
-        <label>Crop Name</label>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
           name="crop"
-          placeholder="e.g. Wheat"
+          placeholder="Crop (e.g. Wheat)"
           onChange={handleChange}
           required
+          className="w-full border p-2 rounded"
         />
 
-        <label>District</label>
         <input
           type="text"
           name="district"
-          placeholder="e.g. Pune"
+          placeholder="District (e.g. Pune)"
           onChange={handleChange}
           required
+          className="w-full border p-2 rounded"
         />
 
-        <label>Month</label>
         <input
           type="text"
           name="month"
-          placeholder="e.g. January"
+          placeholder="Month (e.g. January)"
           onChange={handleChange}
           required
+          className="w-full border p-2 rounded"
         />
 
-        <button type="submit">Get Price</button>
+        <button
+          type="submit"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+        >
+          Get Price
+        </button>
       </form>
 
       {price && (
-        <div style={{ marginTop: "20px" }}>
-          <h3>Recommended Selling Price</h3>
-          <p><strong>₹ {price} per Quintal</strong></p>
-        </div>
+        <p className="mt-4 text-lg font-semibold text-green-700">
+          ₹ {price} per Quintal
+        </p>
       )}
 
       {error && (
-        <p style={{ color: "red", marginTop: "10px" }}>{error}</p>
+        <p className="mt-4 text-red-600">{error}</p>
       )}
     </div>
   );

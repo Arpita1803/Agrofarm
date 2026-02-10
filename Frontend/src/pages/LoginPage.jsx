@@ -90,7 +90,7 @@ function LoginPage() {
         {/* Header */}
         <div className="text-center">
           <Link to="/" className="inline-block">
-            <h1 className="text-3xl font-bold text-green-800">AGROTECH</h1>
+            <h1 className="text-3xl font-bold text-green-800">AGROFARM</h1>
           </Link>
           <h2 className="mt-6 text-2xl font-bold text-gray-900">
             Welcome back

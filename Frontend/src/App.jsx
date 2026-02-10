@@ -1,17 +1,24 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
+
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+
 import DealerDashboard from './pages/dealer/DealerDashboard'
 import DealerCategory from './pages/dealer/DealerCategory'
 import DealerOrders from './pages/dealer/DealerOrders'
 import DealerChats from './pages/dealer/DealerChats'
+import DealerProfile from './pages/dealer/DealerProfile'
+
 import FarmerDashboard from './pages/farmer/FarmerDashboard'
 import FarmerOrders from './pages/farmer/FarmerOrders'
 import FarmerProducts from './pages/farmer/FarmerProducts'
 import FarmerChats from './pages/farmer/FarmerChats'
+
 import ChatInterface from './pages/ChatInterface'
+import DealerPriceRecommendation from "./components/dealer/DealerPriceRecommendation";
+
 import './App.css'
 
 function App() {
@@ -21,19 +28,23 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        
+
         {/* Dealer Routes */}
         <Route path="/dealer/dashboard" element={<DealerDashboard />} />
         <Route path="/dealer/category/:categoryName" element={<DealerCategory />} />
         <Route path="/dealer/orders" element={<DealerOrders />} />
         <Route path="/dealer/chats" element={<DealerChats />} />
+        <Route path="/dealer/profile" element={<DealerProfile />} />
+
+        <Route path="/dealer/price-prediction" element={<DealerPriceRecommendation />} />
         
+
         {/* Farmer Routes */}
         <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
         <Route path="/farmer/orders" element={<FarmerOrders />} />
         <Route path="/farmer/products" element={<FarmerProducts />} />
         <Route path="/farmer/chats" element={<FarmerChats />} />
-        
+
         {/* Common Routes */}
         <Route path="/chat/:chatId" element={<ChatInterface />} />
       </Routes>
@@ -41,4 +52,4 @@ function App() {
   )
 }
 
-export default App 
+export default App

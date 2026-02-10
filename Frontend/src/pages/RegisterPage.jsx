@@ -20,7 +20,6 @@ function RegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get role from navigation state
   useEffect(() => {
     const roleFromState = location.state?.selectedRole;
     if (roleFromState) {
@@ -96,7 +95,6 @@ function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // 🔗 Backend expects: name, email, password, role
       const res = await registerUser({
         name: formData.fullName,
         email: formData.email,
@@ -121,24 +119,22 @@ function RegisterPage() {
     const roleMap = {
       farmer: "Farmer",
       dealer: "Dealer",
-      authority: "Authority",
     };
     return roleMap[role] || "Select Role";
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4">
+      <div className="max-w-xl w-full space-y-8">
         <div className="text-center">
           <Link to="/" className="inline-block">
-            <h1 className="text-3xl font-bold text-green-800">AGROTECH</h1>
+            <h1 className="text-3xl font-bold text-green-800">AGROFARM</h1>
           </Link>
-          <h2 className="mt-6 text-2xl font-bold text-gray-900">
+          <h2 className="mt-6 text-xl md:text-2xl font-bold text-gray-900">
             Create your account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Join as{" "}
-            {formData.role ? getRoleDisplayName(formData.role) : "a user"}
+            Join as {formData.role ? getRoleDisplayName(formData.role) : "a user"}
           </p>
         </div>
 
@@ -153,27 +149,27 @@ function RegisterPage() {
           )}
 
           {/* Role Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="flex flex-col items-center">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
               I am a *
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {["farmer", "dealer", "authority"].map((role) => (
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl w-full">
+              {["farmer", "dealer"].map((role) => (
                 <div
                   key={role}
                   onClick={() =>
                     handleChange({ target: { name: "role", value: role } })
                   }
-                  className={`border-2 rounded-lg p-4 text-center cursor-pointer transition duration-300 ${
+                  className={`border-2 rounded-xl p-6 text-center cursor-pointer transition-all duration-300 transform hover:scale-105 ${
                     formData.role === role
                       ? "border-green-500 bg-green-50"
                       : "border-gray-300 hover:border-green-300"
                   }`}
                 >
-                  <div className="text-2xl mb-2">
+                  <div className="text-3xl mb-2">
                     {role === "farmer" && "🌾"}
                     {role === "dealer" && "🏪"}
-                    {role === "authority" && "🏛️"}
                   </div>
                   <div className="font-medium text-gray-800 capitalize">
                     {role}
@@ -181,237 +177,161 @@ function RegisterPage() {
                 </div>
               ))}
             </div>
+
             {errors.role && (
-              <p className="mt-1 text-sm text-red-600">{errors.role}</p>
+              <p className="mt-2 text-sm text-red-600">{errors.role}</p>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Full Name */}
             <div>
-              <label
-                htmlFor="fullName"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name *
               </label>
               <input
-                id="fullName"
                 name="fullName"
-                type="text"
                 value={formData.fullName}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.fullName ? "border-red-300" : "border-gray-300"
                 }`}
-                placeholder="Enter your full name"
               />
               {errors.fullName && (
-                <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
+                <p className="text-sm text-red-600">{errors.fullName}</p>
               )}
             </div>
 
             {/* Email */}
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email Address *
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email *
               </label>
               <input
-                id="email"
                 name="email"
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.email ? "border-red-300" : "border-gray-300"
                 }`}
-                placeholder="Enter your email"
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                <p className="text-sm text-red-600">{errors.email}</p>
               )}
             </div>
 
             {/* Phone */}
             <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Phone Number *
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone *
               </label>
               <input
-                id="phone"
                 name="phone"
-                type="tel"
                 value={formData.phone}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.phone ? "border-red-300" : "border-gray-300"
                 }`}
-                placeholder="Enter 10-digit phone number"
               />
               {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                <p className="text-sm text-red-600">{errors.phone}</p>
               )}
             </div>
 
             {/* Location */}
             <div>
-              <label
-                htmlFor="location"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Location *
               </label>
               <input
-                id="location"
                 name="location"
-                type="text"
                 value={formData.location}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                   errors.location ? "border-red-300" : "border-gray-300"
                 }`}
-                placeholder="Enter your city/village"
               />
               {errors.location && (
-                <p className="mt-1 text-sm text-red-600">{errors.location}</p>
+                <p className="text-sm text-red-600">{errors.location}</p>
               )}
             </div>
 
-            {/* Role-specific fields */}
             {formData.role === "dealer" && (
               <div className="md:col-span-2">
-                <label
-                  htmlFor="businessName"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Business Name *
                 </label>
                 <input
-                  id="businessName"
                   name="businessName"
-                  type="text"
                   value={formData.businessName}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                     errors.businessName ? "border-red-300" : "border-gray-300"
                   }`}
-                  placeholder="Enter your business name"
                 />
-                {errors.businessName && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.businessName}
-                  </p>
-                )}
               </div>
             )}
 
             {formData.role === "farmer" && (
               <div className="md:col-span-2">
-                <label
-                  htmlFor="aadharNumber"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Aadhar Number *
                 </label>
                 <input
-                  id="aadharNumber"
                   name="aadharNumber"
-                  type="text"
                   value={formData.aadharNumber}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                     errors.aadharNumber ? "border-red-300" : "border-gray-300"
                   }`}
-                  placeholder="Enter 12-digit Aadhar number"
                 />
-                {errors.aadharNumber && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.aadharNumber}
-                  </p>
-                )}
               </div>
             )}
 
             {/* Password */}
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password *
               </label>
               <input
-                id="password"
-                name="password"
                 type="password"
+                name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
-                  errors.password ? "border-red-300" : "border-gray-300"
-                }`}
-                placeholder="Create a password"
+                className="w-full px-4 py-3 border rounded-lg"
               />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password *
               </label>
               <input
-                id="confirmPassword"
-                name="confirmPassword"
                 type="password"
+                name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-300 ${
-                  errors.confirmPassword ? "border-red-300" : "border-gray-300"
-                }`}
-                placeholder="Confirm your password"
+                className="w-full px-4 py-3 border rounded-lg"
               />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.confirmPassword}
-                </p>
-              )}
             </div>
           </div>
-          {/* Rest of JSX is unchanged */}
-          {/* (All your inputs, role cards, validations remain exactly the same) */}
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              {isLoading ? "Creating account..." : "Create Account"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+          >
+            {isLoading ? "Creating account..." : "Create Account"}
+          </button>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="font-medium text-green-600 hover:text-green-500"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="text-center text-sm text-gray-600">
+            Already have an account?{" "}
+            <Link to="/login" className="text-green-600 font-medium">
+              Sign in
+            </Link>
+          </p>
         </form>
       </div>
     </div>

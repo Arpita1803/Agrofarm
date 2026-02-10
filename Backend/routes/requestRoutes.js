@@ -1,10 +1,16 @@
 import express from "express";
-import { createRequest, getOpenRequests } from "../controllers/requestController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import Request from "../models/Request.js";
 
 const router = express.Router();
 
-router.post("/", protect, createRequest);      // Dealer
-router.get("/", protect, getOpenRequests);     // Farmer
+// Farmer fetches dealer requests
+router.get("/", async (req, res) => {
+  try {
+    const requests = await Request.find();
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch requests" });
+  }
+});
 
 export default router;
