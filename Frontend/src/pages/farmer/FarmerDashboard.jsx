@@ -91,16 +91,21 @@ function FarmerDashboard() {
             key={request._id}
             className="bg-white p-4 rounded shadow border"
           >
-            <h3 className="font-bold text-lg">
-              {request.product}
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{request.productImage || "🌾"}</span>
+              <h3 className="font-bold text-lg">{request.product}</h3>
+            </div>
 
             <p className="text-sm">
               Quantity: {request.quantity} kg
             </p>
 
             <p className="text-sm">
-              Price: {request.priceExpected}
+              Price: ₹{request.minPrice} - ₹{request.maxPrice}
+            </p>
+
+            <p className="text-sm">
+              Dealer: {request.dealerName || "Dealer"}
             </p>
 
             <p className="text-sm">

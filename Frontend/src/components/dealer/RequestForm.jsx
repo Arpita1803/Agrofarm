@@ -20,16 +20,18 @@ function RequestForm({ product, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("POST REQUEST CLICKED", formData);
-
     try {
       setLoading(true);
 
       await createRequest({
         product: product.name,
-        quantity: formData.quantity,
-        priceExpected: `${formData.minPrice}-${formData.maxPrice}`,
+        productImage: product.image,
+        quantity: Number(formData.quantity),
+        minPrice: Number(formData.minPrice),
+        maxPrice: Number(formData.maxPrice),
         location: "India",
+        requiredDate: formData.requiredDate || undefined,
+        mobile: formData.mobile,
         description: formData.notes,
       });
 
@@ -45,10 +47,7 @@ function RequestForm({ product, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-lg w-96 space-y-4"
-      >
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg w-96 space-y-4">
         <h2 className="text-xl font-bold">{product.name} Request</h2>
 
         <input
@@ -65,14 +64,30 @@ function RequestForm({ product, onClose }) {
             placeholder="Min Price"
             onChange={handleChange}
             className="w-full border p-2"
+            required
           />
           <input
             name="maxPrice"
             placeholder="Max Price"
             onChange={handleChange}
             className="w-full border p-2"
+            required
           />
         </div>
+
+        <input
+          name="requiredDate"
+          type="date"
+          onChange={handleChange}
+          className="w-full border p-2"
+        />
+
+        <input
+          name="mobile"
+          placeholder="Mobile number"
+          onChange={handleChange}
+          className="w-full border p-2"
+        />
 
         <textarea
           name="notes"
@@ -82,18 +97,10 @@ function RequestForm({ product, onClose }) {
         />
 
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-1/2 border p-2"
-          >
+          <button type="button" onClick={onClose} className="w-1/2 border p-2">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-1/2 bg-green-600 text-white p-2"
-          >
+          <button type="submit" disabled={loading} className="w-1/2 bg-green-600 text-white p-2">
             {loading ? "Posting..." : "Post Request"}
           </button>
         </div>
