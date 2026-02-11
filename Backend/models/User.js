@@ -22,13 +22,6 @@ const userSchema = new mongoose.Schema(
       enum: ["farmer", "dealer"],
       required: true,
     },
-    {
-  name: String,
-  email: String,
-  phone: String,
-  password: String,
-  role: String, // dealer / farmer / admin
-}
   },
   { timestamps: true }
 );
