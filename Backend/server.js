@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import requestRoutes from "./routes/requestRoutes.js";
 import adRoutes from "./routes/adRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/ads", adRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Database connection
 mongoose
