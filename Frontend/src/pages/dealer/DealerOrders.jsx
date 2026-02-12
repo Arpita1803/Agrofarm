@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OrderDetails from '../../components/orders/OrderDetails';
-import { fetchMyOrders } from '../../services/orderApi';
+import { fetchMyOrders, updateOrderStatus } from '../../services/orderApi';
 
 const statusFilterDefs = [
   { id: 'all', label: 'All Orders' },
@@ -114,6 +114,31 @@ function DealerOrders() {
     pendingOrders: orders.filter(o => o.status === 'pending').length
   };
 
+  const applyLocalStatus = (orderId, status) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status,
+              progress: statusProgressMap[status] ?? o.progress,
+              lastUpdated: new Date().toISOString(),
+            }
+          : o
+      )
+    );
+
+    setSelectedOrder((prev) => {
+      if (!prev || prev.id !== orderId) return prev;
+      return {
+        ...prev,
+        status,
+        progress: statusProgressMap[status] ?? prev.progress,
+        lastUpdated: new Date().toISOString(),
+      };
+    });
+  };
+
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
     setShowOrderDetails(true);
@@ -135,17 +160,27 @@ function DealerOrders() {
     });
   };
 
-  const handleAcceptOrder = (order) => {
-    if (window.confirm(`Accept order ${order.id} from ${order.farmer}?`)) {
+  const handleAcceptOrder = async (order) => {
+    if (!window.confirm(`Accept order ${order.id} from ${order.farmer}?`)) return;
+
+    try {
+      await updateOrderStatus(order.id, 'accepted');
+      applyLocalStatus(order.id, 'accepted');
       alert(`Order ${order.id} accepted.`);
-      // In real app, update order status via API
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to accept order');
     }
   };
 
-  const handleRejectOrder = (order) => {
-    if (window.confirm(`Reject order ${order.id}?`)) {
+  const handleRejectOrder = async (order) => {
+    if (!window.confirm(`Reject order ${order.id}?`)) return;
+
+    try {
+      await updateOrderStatus(order.id, 'cancelled');
+      applyLocalStatus(order.id, 'cancelled');
       alert(`Order ${order.id} rejected.`);
-      // In real app, update order status via API
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to reject order');
     }
   };
 

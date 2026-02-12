@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OrderDetails from '../../components/orders/OrderDetails';
-import { fetchMyOrders } from '../../services/orderApi';
+import { fetchMyOrders, updateOrderStatus } from '../../services/orderApi';
 
 const statusFilterDefs = [
   { id: 'all', label: 'All Orders' },
@@ -113,6 +113,31 @@ function FarmerOrders() {
     pendingPayment: orders.filter(o => o.paymentStatus === 'pending').reduce((sum, o) => sum + o.grandTotal, 0)
   };
 
+  const applyLocalStatus = (orderId, status) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status,
+              progress: statusProgressMap[status] ?? o.progress,
+              lastUpdated: new Date().toISOString(),
+            }
+          : o
+      )
+    );
+
+    setSelectedOrder((prev) => {
+      if (!prev || prev.id !== orderId) return prev;
+      return {
+        ...prev,
+        status,
+        progress: statusProgressMap[status] ?? prev.progress,
+        lastUpdated: new Date().toISOString(),
+      };
+    });
+  };
+
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
     setShowOrderDetails(true);
@@ -135,10 +160,15 @@ function FarmerOrders() {
     });
   };
 
-  const handleCancelOrder = (order) => {
-    if (window.confirm(`Are you sure you want to cancel order ${order.id}?`)) {
+  const handleCancelOrder = async (order) => {
+    if (!window.confirm(`Are you sure you want to cancel order ${order.id}?`)) return;
+
+    try {
+      await updateOrderStatus(order.id, 'cancelled');
+      applyLocalStatus(order.id, 'cancelled');
       alert(`Order ${order.id} cancellation requested.`);
-      // In real app, update order status via API
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to cancel order');
     }
   };
 
