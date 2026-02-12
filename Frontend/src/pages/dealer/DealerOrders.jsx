@@ -77,6 +77,8 @@ function DealerOrders() {
       paymentStatus: order.paymentStatus || 'pending',
       farmerRating: order.farmerRating || 4.5,
       lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
+      farmerId: order.farmerId,
+      dealerId: order.dealerId,
     };
   };
 
@@ -155,7 +157,11 @@ function DealerOrders() {
           product: order.product,
           farmer: order.farmer,
           image: order.image
-        }
+        },
+        chatContext: {
+          orderId: order.id,
+          otherUserId: order.farmerId,
+        },
       }
     });
   };

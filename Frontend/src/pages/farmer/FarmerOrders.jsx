@@ -76,6 +76,8 @@ function FarmerOrders() {
       meetingPlace: order.meetingPlace || 'To be discussed',
       paymentStatus: order.paymentStatus || 'pending',
       lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
+      farmerId: order.farmerId,
+      dealerId: order.dealerId,
     };
   };
 
@@ -155,7 +157,11 @@ function FarmerOrders() {
           product: order.product,
           dealer: order.dealer,
           image: order.image
-        }
+        },
+        chatContext: {
+          orderId: order.id,
+          otherUserId: order.dealerId,
+        },
       }
     });
   };
