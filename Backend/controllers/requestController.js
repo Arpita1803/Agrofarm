@@ -1,5 +1,6 @@
 import Request from "../models/Request.js";
 import User from "../models/User.js";
+import Order from "../models/Order.js";
 
 // Dealer creates request
 export const createRequest = async (req, res) => {
@@ -42,7 +43,7 @@ export const createRequest = async (req, res) => {
 };
 
 // Farmer fetches all open requests
-export const getOpenRequests = async (req, res) => {
+export const getOpenRequests = async (_req, res) => {
   try {
     const requests = await Request.find({ status: "open" }).sort({ createdAt: -1 });
     res.json(requests);
@@ -51,61 +52,52 @@ export const getOpenRequests = async (req, res) => {
   }
 };
 
+// Farmer accepts request -> create order
+export const acceptRequest = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "farmer") {
+      return res.status(403).json({ message: "Only farmers can accept requests" });
+    }
 
+    const { id } = req.params;
+    const request = await Request.findById(id);
 
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
 
-// import Request from "../models/Request.js";
-// import User from "../models/User.js";
+    if (request.status !== "open") {
+      return res.status(400).json({ message: "Request is not open for acceptance" });
+    }
 
-// // Dealer creates request
-// export const createRequest = async (req, res) => {
-//   try {
-//     if (!req.user || req.user.role !== "dealer") {
-//       return res.status(403).json({ message: "Only dealers can create requests" });
-//     }
+    const farmer = await User.findById(req.user.id).select("name");
+    if (!farmer) {
+      return res.status(404).json({ message: "Farmer not found" });
+    }
 
-//     const { product, productImage, quantity, minPrice, maxPrice, location, description, requiredDate, mobile } =
-//       req.body;
+    const agreedPrice = Number(req.body?.agreedPrice ?? request.maxPrice);
 
-//     if (!product || !quantity || minPrice === undefined || maxPrice === undefined) {
-//       return res.status(400).json({ message: "product, quantity, minPrice and maxPrice are required" });
-//     }
+    const order = await Order.create({
+      requestId: request._id,
+      dealerId: request.dealerId,
+      dealerName: request.dealerName,
+      farmerId: req.user.id,
+      farmerName: farmer.name,
+      product: request.product,
+      productImage: request.productImage,
+      quantity: request.quantity,
+      agreedPrice,
+      status: "accepted",
+    });
 
-//     const dealer = await User.findById(req.user.id).select("name");
-//     if (!dealer) {
-//       return res.status(404).json({ message: "Dealer not found" });
-//     }
+    request.status = "accepted";
+    await request.save();
 
-//     const request = await Request.create({
-//       product,
-//       productImage,
-//       quantity: Number(quantity),
-//       minPrice: Number(minPrice),
-//       maxPrice: Number(maxPrice),
-//       location,
-//       description,
-//       requiredDate,
-//       mobile,
-//       dealerName: dealer.name,
-//       dealerId: req.user.id,
-//       status: "open",
-//     });
-
-//     res.status(201).json(request);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-// // Farmer fetches all open requests
-// export const getOpenRequests = async (req, res) => {
-//   try {
-//     const requests = await Request.find({ status: "open" }).sort({ createdAt: -1 });
-//     res.json(requests);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-
- 
+    return res.status(201).json({
+      message: "Request accepted and order created",
+      order,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
