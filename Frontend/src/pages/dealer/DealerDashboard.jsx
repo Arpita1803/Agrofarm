@@ -13,6 +13,13 @@ const categories = [
       { id: 3, name: 'Mango', image: '🥭', description: 'Seasonal mango varieties' },
       { id: 4, name: 'Banana', image: '🍌', description: 'Ripe bananas' },
       { id: 5, name: 'Grapes', image: '🍇', description: 'Fresh grape bunches' },
+      { id: 6, name: 'Pomegranate', image: '🍎', description: 'Premium anar for juice and table use' },
+      { id: 7, name: 'Guava', image: '🍏', description: 'Farm guava rich in nutrients' },
+      { id: 8, name: 'Papaya', image: '🥭', description: 'Naturally ripened papaya' },
+      { id: 9, name: 'Watermelon', image: '🍉', description: 'Summer watermelon stock' },
+      { id: 10, name: 'Pineapple', image: '🍍', description: 'Fresh pineapple from growers' },
+      { id: 11, name: 'Coconut', image: '🥥', description: 'Tender and mature coconuts' },
+      { id: 12, name: 'Lemon', image: '🍋', description: 'Bulk lemon for retail and juice stalls' },
     ]
   },
   {
@@ -25,37 +32,118 @@ const categories = [
       { id: 3, name: 'Potato', image: '🥔', description: 'Farm fresh potatoes' },
       { id: 4, name: 'Onion', image: '🧅', description: 'Local onions' },
       { id: 5, name: 'Carrot', image: '🥕', description: 'Organic carrots' },
+      { id: 6, name: 'Cabbage', image: '🥬', description: 'Green cabbage and red cabbage' },
+      { id: 7, name: 'Cauliflower', image: '🥦', description: 'Fresh cauliflower heads' },
+      { id: 8, name: 'Brinjal', image: '🍆', description: 'Purple and green brinjal varieties' },
+      { id: 9, name: 'Green Chilli', image: '🌶️', description: 'Spicy green chilli lots' },
+      { id: 10, name: 'Capsicum', image: '🫑', description: 'Green/yellow/red capsicum' },
+      { id: 11, name: 'Okra (Lady Finger)', image: '🥒', description: 'Tender bhindi from local farms' },
+      { id: 12, name: 'Cucumber', image: '🥒', description: 'Fresh salad cucumbers' },
+      { id: 13, name: 'Pumpkin', image: '🎃', description: 'Yellow and green pumpkin' },
+      { id: 14, name: 'Bottle Gourd', image: '🥒', description: 'Lauki for daily vegetable markets' },
+      { id: 15, name: 'Spinach', image: '🥬', description: 'Leafy spinach bundles' },
     ]
   },
   {
     id: 3,
-    name: 'Cereals',
+    name: 'Cereals & Grains',
     icon: '🌾',
     products: [
-      { id: 1, name: 'Rice', image: '🍚', description: 'Basmati rice' },
+      { id: 1, name: 'Rice', image: '🍚', description: 'Basmati and non-basmati rice' },
       { id: 2, name: 'Wheat', image: '🌾', description: 'Whole wheat grains' },
-      { id: 3, name: 'Corn', image: '🌽', description: 'Sweet corn' },
+      { id: 3, name: 'Corn (Maize)', image: '🌽', description: 'Dry and sweet corn' },
       { id: 4, name: 'Oats', image: '🥣', description: 'Organic oats' },
+      { id: 5, name: 'Barley', image: '🌾', description: 'Feed and malt grade barley' },
+      { id: 6, name: 'Jowar (Sorghum)', image: '🌾', description: 'Millet grain for flour and feed' },
+      { id: 7, name: 'Bajra (Pearl Millet)', image: '🌾', description: 'Bajra from dryland farms' },
+      { id: 8, name: 'Ragi (Finger Millet)', image: '🌾', description: 'Nutri-cereal ragi lots' },
+      { id: 9, name: 'Foxtail Millet', image: '🌾', description: 'Millet for health-conscious buyers' },
+      { id: 10, name: 'Quinoa', image: '🌾', description: 'Premium quinoa growers produce' },
     ]
   },
   {
     id: 4,
-    name: 'Pulses',
+    name: 'Pulses & Legumes',
     icon: '🫘',
     products: [
-      { id: 1, name: 'Lentils', image: '🫘', description: 'Various lentil types' },
-      { id: 2, name: 'Chickpeas', image: '🫘', description: 'High-quality chickpeas' },
-      { id: 3, name: 'Beans', image: '🫘', description: 'Different bean varieties' },
+      { id: 1, name: 'Toor Dal', image: '🫘', description: 'Pigeon pea lots' },
+      { id: 2, name: 'Moong Dal', image: '🫘', description: 'Green gram and split moong' },
+      { id: 3, name: 'Urad Dal', image: '🫘', description: 'Black gram for wholesale buyers' },
+      { id: 4, name: 'Masoor Dal', image: '🫘', description: 'Red lentils' },
+      { id: 5, name: 'Chickpeas', image: '🫘', description: 'Kabuli and desi chana' },
+      { id: 6, name: 'Rajma (Kidney Beans)', image: '🫘', description: 'Red and speckled rajma' },
+      { id: 7, name: 'Cowpea', image: '🫘', description: 'Lobia for food and processing' },
+      { id: 8, name: 'Field Peas', image: '🫘', description: 'Dry peas for pulse traders' },
     ]
   },
   {
     id: 5,
-    name: 'Milk Products',
+    name: 'Oilseeds',
+    icon: '🌻',
+    products: [
+      { id: 1, name: 'Groundnut', image: '🥜', description: 'Peanut with different shell grades' },
+      { id: 2, name: 'Mustard Seed', image: '🌱', description: 'Black and yellow mustard' },
+      { id: 3, name: 'Soybean', image: '🫘', description: 'High protein soybean lots' },
+      { id: 4, name: 'Sunflower Seed', image: '🌻', description: 'Oil extraction grade sunflower' },
+      { id: 5, name: 'Sesame (Til)', image: '🌱', description: 'White and black sesame' },
+      { id: 6, name: 'Castor Seed', image: '🌱', description: 'Industrial oilseed castor' },
+      { id: 7, name: 'Flaxseed', image: '🌱', description: 'Healthy omega-rich flaxseed' },
+    ]
+  },
+  {
+    id: 6,
+    name: 'Spices',
+    icon: '🧂',
+    products: [
+      { id: 1, name: 'Turmeric', image: '🧂', description: 'Fresh and dry turmeric fingers' },
+      { id: 2, name: 'Red Chilli', image: '🌶️', description: 'Dry red chilli lots' },
+      { id: 3, name: 'Coriander Seed', image: '🌿', description: 'Whole dhania seeds' },
+      { id: 4, name: 'Cumin (Jeera)', image: '🌿', description: 'Premium jeera for spice traders' },
+      { id: 5, name: 'Fenugreek (Methi)', image: '🌿', description: 'Methi seeds and leaves' },
+      { id: 6, name: 'Black Pepper', image: '🧂', description: 'Whole pepper for spice market' },
+      { id: 7, name: 'Cardamom', image: '🌿', description: 'Green elaichi packs' },
+      { id: 8, name: 'Ginger', image: '🫚', description: 'Fresh ginger rhizomes' },
+      { id: 9, name: 'Garlic', image: '🧄', description: 'Bulk garlic bulbs' },
+    ]
+  },
+  {
+    id: 7,
+    name: 'Plantation & Cash Crops',
+    icon: '☕',
+    products: [
+      { id: 1, name: 'Sugarcane', image: '🌾', description: 'Cane supply for mills and juice' },
+      { id: 2, name: 'Cotton', image: '☁️', description: 'Raw kapas cotton lots' },
+      { id: 3, name: 'Tea Leaves', image: '🍃', description: 'Fresh tea leaf procurement' },
+      { id: 4, name: 'Coffee Beans', image: '☕', description: 'Arabica and robusta beans' },
+      { id: 5, name: 'Jute', image: '🌾', description: 'Jute fiber crop supply' },
+      { id: 6, name: 'Tobacco', image: '🍂', description: 'Cured tobacco leaves' },
+    ]
+  },
+  {
+    id: 8,
+    name: 'Milk & Animal Products',
     icon: '🥛',
     products: [
-      { id: 1, name: 'Milk', image: '🥛', description: 'Fresh milk' },
-      { id: 2, name: 'Cheese', image: '🧀', description: 'Various cheese types' },
-      { id: 3, name: 'Yogurt', image: '🍶', description: 'Fresh yogurt' },
+      { id: 1, name: 'Milk', image: '🥛', description: 'Fresh milk from dairy farmers' },
+      { id: 2, name: 'Curd', image: '🍶', description: 'Farm curd for local supply' },
+      { id: 3, name: 'Paneer', image: '🧀', description: 'Fresh paneer blocks' },
+      { id: 4, name: 'Ghee', image: '🫙', description: 'Cow and buffalo ghee' },
+      { id: 5, name: 'Butter', image: '🧈', description: 'Fresh white/yellow butter' },
+      { id: 6, name: 'Eggs', image: '🥚', description: 'Poultry farm egg trays' },
+      { id: 7, name: 'Honey', image: '🍯', description: 'Natural honey from beekeepers' },
+    ]
+  },
+  {
+    id: 9,
+    name: 'Flowers & Horticulture',
+    icon: '🌸',
+    products: [
+      { id: 1, name: 'Marigold', image: '🌼', description: 'Festival marigold flowers' },
+      { id: 2, name: 'Rose', image: '🌹', description: 'Loose rose petals and stems' },
+      { id: 3, name: 'Jasmine', image: '🌸', description: 'Fresh jasmine strings and flowers' },
+      { id: 4, name: 'Chrysanthemum', image: '🌼', description: 'Decorative flower bundles' },
+      { id: 5, name: 'Banana Leaf', image: '🍃', description: 'Leaves for catering and rituals' },
+      { id: 6, name: 'Nursery Plants', image: '🪴', description: 'Vegetable and fruit saplings' },
     ]
   }
 ];
