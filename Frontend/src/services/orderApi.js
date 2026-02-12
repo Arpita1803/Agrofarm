@@ -21,3 +21,13 @@ export const fetchMyOrders = async () => {
     return [];
   }
 };
+
+export const updateOrderStatus = async (orderId, status) => {
+  try {
+    const res = await API.patch(`/orders/${orderId}/status`, { status });
+    return res.data;
+  } catch (error) {
+    console.error("Update order status error:", error.response?.data || error.message);
+    throw error;
+  }
+};

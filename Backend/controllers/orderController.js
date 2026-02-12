@@ -22,3 +22,47 @@ export const getMyOrders = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedStatuses = ["pending", "accepted", "processing", "shipped", "delivered", "cancelled"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const isDealer = req.user.role === "dealer" && String(order.dealerId) === String(req.user.id);
+    const isFarmer = req.user.role === "farmer" && String(order.farmerId) === String(req.user.id);
+
+    if (!isDealer && !isFarmer) {
+      return res.status(403).json({ message: "Not authorized for this order" });
+    }
+
+    if (isFarmer) {
+      if (status !== "cancelled") {
+        return res.status(403).json({ message: "Farmer can only cancel orders" });
+      }
+      if (!["pending", "accepted"].includes(order.status)) {
+        return res.status(400).json({ message: "Order can no longer be cancelled" });
+      }
+    }
+
+    order.status = status;
+    await order.save();
+
+    return res.json({ message: "Order status updated", order });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
