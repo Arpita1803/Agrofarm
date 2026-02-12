@@ -1,9 +1,12 @@
+import mongoose from "mongoose";
 import Chat from "../models/Chat.js";
 import Request from "../models/Request.js";
 import Order from "../models/Order.js";
 
 const isParticipant = (chat, userId) =>
   String(chat.farmerId) === String(userId) || String(chat.dealerId) === String(userId);
+
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(String(value || ""));
 
 export const createOrGetChat = async (req, res) => {
   try {
@@ -15,6 +18,18 @@ export const createOrGetChat = async (req, res) => {
 
     if (!otherUserId || (!requestId && !orderId)) {
       return res.status(400).json({ message: "otherUserId and either requestId or orderId are required" });
+    }
+
+    if (!isValidObjectId(otherUserId)) {
+      return res.status(400).json({ message: "Invalid otherUserId" });
+    }
+
+    if (requestId && !isValidObjectId(requestId)) {
+      return res.status(400).json({ message: "Invalid requestId" });
+    }
+
+    if (orderId && !isValidObjectId(orderId)) {
+      return res.status(400).json({ message: "Invalid orderId" });
     }
 
     let farmerId;
@@ -87,8 +102,38 @@ export const getMyChats = async (req, res) => {
       return res.status(403).json({ message: "Only farmer/dealer chats are supported" });
     }
 
-    const chats = await Chat.find(query).sort({ lastMessageAt: -1 });
-    return res.json(chats);
+    const chats = await Chat.find(query)
+      .populate("dealerId", "name")
+      .populate("farmerId", "name")
+      .populate("requestId", "product productImage")
+      .populate("orderId", "product productImage")
+      .sort({ lastMessageAt: -1 });
+
+    const enriched = chats.map((chat) => {
+      const lastMessage = chat?.messages?.[chat.messages.length - 1] || null;
+      const product = chat?.requestId?.product || chat?.orderId?.product || "";
+      const productImage = chat?.requestId?.productImage || chat?.orderId?.productImage || "🌾";
+
+      return {
+        _id: chat._id,
+        requestId: chat.requestId?._id || null,
+        orderId: chat.orderId?._id || null,
+        farmerId: chat.farmerId?._id || chat.farmerId || null,
+        dealerId: chat.dealerId?._id || chat.dealerId || null,
+        farmerName: chat.farmerId?.name || "Farmer",
+        dealerName: chat.dealerId?.name || "Dealer",
+        product,
+        productImage,
+        lastMessageText: lastMessage?.text || "",
+        lastMessageAt: chat.lastMessageAt || lastMessage?.createdAt || chat.updatedAt,
+        unreadCount: 0,
+        messages: chat.messages,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+      };
+    });
+
+    return res.json(enriched);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

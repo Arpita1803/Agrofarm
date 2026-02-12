@@ -30,7 +30,7 @@ function FarmerChats() {
     if (!q) return chats;
 
     return chats.filter((chat) => {
-      const lastMessage = chat?.messages?.[chat.messages.length - 1]?.text || '';
+      const lastMessage = chat?.lastMessageText || chat?.messages?.[chat.messages.length - 1]?.text || '';
       return (
         String(chat?.dealerName || 'Dealer').toLowerCase().includes(q) ||
         String(chat?.product || '').toLowerCase().includes(q) ||
@@ -59,6 +59,12 @@ function FarmerChats() {
           product: chat?.product || 'Product',
           dealer: chat?.dealerName || 'Dealer',
           image: chat?.productImage || '🌾',
+          dealerId: chat?.dealerId,
+        },
+        chatContext: {
+          requestId: chat?.requestId,
+          orderId: chat?.orderId,
+          otherUserId: chat?.dealerId,
         },
       },
     });
@@ -106,25 +112,22 @@ function FarmerChats() {
           <div className="bg-white rounded-xl border p-8 text-center text-gray-600">No chats found.</div>
         ) : (
           <div className="space-y-3">
-            {filteredChats.map((chat) => {
-              const lastMessage = chat?.messages?.[chat.messages.length - 1];
-              return (
-                <button
-                  key={chat._id}
-                  onClick={() => handleChatClick(chat)}
-                  className="w-full text-left bg-white rounded-xl border hover:border-green-300 hover:shadow-sm p-4 transition"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{chat?.dealerName || 'Dealer'}</h3>
-                      <p className="text-sm text-gray-600">Product: {chat?.product || 'N/A'}</p>
-                      <p className="text-sm text-gray-700 mt-1 line-clamp-1">{lastMessage?.text || 'No messages yet'}</p>
-                    </div>
-                    <span className="text-xs text-gray-500">{formatTime(chat?.lastMessageAt || lastMessage?.createdAt)}</span>
+            {filteredChats.map((chat) => (
+              <button
+                key={chat._id}
+                onClick={() => handleChatClick(chat)}
+                className="w-full text-left bg-white rounded-xl border hover:border-green-300 hover:shadow-sm p-4 transition"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{chat?.dealerName || 'Dealer'}</h3>
+                    <p className="text-sm text-gray-600">Product: {chat?.product || 'N/A'}</p>
+                    <p className="text-sm text-gray-700 mt-1 line-clamp-1">{chat?.lastMessageText || 'No messages yet'}</p>
                   </div>
-                </button>
-              );
-            })}
+                  <span className="text-xs text-gray-500">{formatTime(chat?.lastMessageAt || chat?.updatedAt)}</span>
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </main>

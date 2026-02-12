@@ -29,7 +29,7 @@ function DealerChats() {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return chats;
     return chats.filter((chat) => {
-      const last = chat?.messages?.[chat.messages.length - 1]?.text || '';
+      const last = chat?.lastMessageText || chat?.messages?.[chat.messages.length - 1]?.text || '';
       return (
         String(chat?.farmerName || 'Farmer').toLowerCase().includes(q) ||
         String(chat?.product || '').toLowerCase().includes(q) ||
@@ -77,36 +77,39 @@ function DealerChats() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredChats.map((chat) => {
-              const last = chat?.messages?.[chat.messages.length - 1];
-              return (
-                <button
-                  key={chat._id}
-                  onClick={() =>
-                    navigate(`/chat/${chat._id}`, {
-                      state: {
-                        chatId: chat._id,
-                        request: {
-                          product: chat?.product || 'Product',
-                          farmer: chat?.farmerName || 'Farmer',
-                          image: chat?.productImage || '🌾',
-                        },
+            {filteredChats.map((chat) => (
+              <button
+                key={chat._id}
+                onClick={() =>
+                  navigate(`/chat/${chat._id}`, {
+                    state: {
+                      chatId: chat._id,
+                      request: {
+                        product: chat?.product || 'Product',
+                        farmer: chat?.farmerName || 'Farmer',
+                        image: chat?.productImage || '🌾',
+                        farmerId: chat?.farmerId,
                       },
-                    })
-                  }
-                  className="w-full text-left bg-white rounded-xl border hover:border-green-300 hover:shadow-sm p-4 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{chat?.farmerName || 'Farmer'}</h3>
-                      <p className="text-sm text-gray-600">Product: {chat?.product || 'N/A'}</p>
-                      <p className="text-sm text-gray-700 mt-1">{last?.text || 'No messages yet'}</p>
-                    </div>
-                    <p className="text-xs text-gray-500">{new Date(chat?.lastMessageAt || chat?.updatedAt).toLocaleString('en-IN')}</p>
+                      chatContext: {
+                        requestId: chat?.requestId,
+                        orderId: chat?.orderId,
+                        otherUserId: chat?.farmerId,
+                      },
+                    },
+                  })
+                }
+                className="w-full text-left bg-white rounded-xl border hover:border-green-300 hover:shadow-sm p-4 transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{chat?.farmerName || 'Farmer'}</h3>
+                    <p className="text-sm text-gray-600">Product: {chat?.product || 'N/A'}</p>
+                    <p className="text-sm text-gray-700 mt-1">{chat?.lastMessageText || 'No messages yet'}</p>
                   </div>
-                </button>
-              );
-            })}
+                  <p className="text-xs text-gray-500">{new Date(chat?.lastMessageAt || chat?.updatedAt).toLocaleString('en-IN')}</p>
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </main>
