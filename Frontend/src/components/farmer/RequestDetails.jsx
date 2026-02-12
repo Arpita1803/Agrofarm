@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 
-function RequestDetails({ request, onClose, onStartChat }) {
+function RequestDetails({ request, onClose, onStartChat, onAcceptRequest }) {
+  const [isAccepting, setIsAccepting] = useState(false);
+
   const formatDate = (dateString) => {
     if (!dateString) return "Not specified";
     return new Date(dateString).toLocaleDateString("en-IN", {
@@ -12,6 +14,16 @@ function RequestDetails({ request, onClose, onStartChat }) {
   };
 
   const postedDate = request.createdAt || request.timestamp;
+
+  const handleAccept = async () => {
+    if (!onAcceptRequest || !request?._id) return;
+    try {
+      setIsAccepting(true);
+      await onAcceptRequest(request);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -84,7 +96,9 @@ function RequestDetails({ request, onClose, onStartChat }) {
 
           <div className="bg-blue-50 rounded-lg p-4">
             <h4 className="font-semibold text-blue-900 mb-2">📝 Additional Information</h4>
-            <p className="text-blue-800">{request.description || "Please discuss quality standards and delivery arrangements before proceeding."}</p>
+            <p className="text-blue-800">
+              {request.description || "Please discuss quality standards and delivery arrangements before proceeding."}
+            </p>
           </div>
 
           <div className="flex space-x-3 pt-4">
@@ -94,6 +108,15 @@ function RequestDetails({ request, onClose, onStartChat }) {
             >
               Close
             </button>
+
+            <button
+              onClick={handleAccept}
+              disabled={isAccepting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-300 disabled:opacity-60"
+            >
+              {isAccepting ? "Accepting..." : "Accept Request"}
+            </button>
+
             <button
               onClick={onStartChat}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition duration-300"
