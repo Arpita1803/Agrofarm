@@ -54,6 +54,7 @@ function ChatInterface() {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [showTranslation, setShowTranslation] = useState(true);
   const [showProceedDeal, setShowProceedDeal] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState('');
 
   const otherUserLabel = role === 'dealer' ? request?.farmer || 'Farmer' : request?.dealer || 'Dealer';
   const otherUserLanguage = userLanguage === 'en' ? 'hi' : 'en';
@@ -66,6 +67,8 @@ function ChatInterface() {
     const bootstrapChat = async () => {
       try {
         setIsBootstrapping(true);
+
+        setBootstrapError('');
 
         if (isObjectId(routeChatId)) {
           setChatId(routeChatId);
@@ -89,6 +92,7 @@ function ChatInterface() {
         };
 
         if (!payload.otherUserId || (!payload.requestId && !payload.orderId)) {
+          setBootstrapError('Unable to initialize chat. Please open chat from request/order card.');
           return;
         }
 
@@ -98,6 +102,7 @@ function ChatInterface() {
         }
       } catch (error) {
         console.error('Failed to initialize chat:', error);
+        setBootstrapError(error?.response?.data?.message || 'Failed to initialize chat');
       } finally {
         setIsBootstrapping(false);
       }
@@ -224,6 +229,8 @@ function ChatInterface() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {isBootstrapping ? (
               <p className="text-gray-600">Loading chat...</p>
+            ) : bootstrapError ? (
+              <p className="text-red-600">{bootstrapError}</p>
             ) : messages.length === 0 ? (
               <p className="text-gray-500">No messages yet. Start the conversation.</p>
             ) : (

@@ -50,6 +50,10 @@ function FarmerDashboard() {
       state: {
         request: requestToChat,
         userLanguage: language,
+        chatContext: {
+          requestId: requestToChat._id,
+          otherUserId: requestToChat.dealerId,
+        },
       },
     });
   };
