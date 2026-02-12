@@ -1,146 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OrderDetails from '../../components/orders/OrderDetails';
+import { fetchMyOrders } from '../../services/orderApi';
 
-// Mock order data
-const mockOrders = [
-  {
-    id: 'ORD-001',
-    product: 'Tomato',
-    image: '🍅',
-    quantity: 50,
-    dealer: 'Rajesh Traders',
-    pricePerKg: 12,
-    totalAmount: 600,
-    deliveryCost: 50,
-    grandTotal: 650,
-    orderDate: '2024-01-15',
-    deliveryDate: '2024-01-18',
-    status: 'accepted', // pending, accepted, processing, shipped, delivered, cancelled
-    progress: 75,
-    location: 'Mumbai, Maharashtra',
-    notes: 'Fresh Roma tomatoes, Grade A quality',
-    deliveryMode: 'farmer_delivery',
-    meetingPlace: 'Rajesh Traders, Mumbai Central',
-    paymentStatus: 'pending', // pending, paid, failed
-    lastUpdated: '2024-01-16T14:30:00Z'
-  },
-  {
-    id: 'ORD-002',
-    product: 'Orange',
-    image: '🍊',
-    quantity: 100,
-    dealer: 'Meena Fruits',
-    pricePerKg: 11,
-    totalAmount: 1100,
-    deliveryCost: 100,
-    grandTotal: 1200,
-    orderDate: '2024-01-14',
-    deliveryDate: '2024-01-20',
-    status: 'processing',
-    progress: 50,
-    location: 'Pune, Maharashtra',
-    notes: 'Navel oranges, sweet and juicy',
-    deliveryMode: 'dealer_pickup',
-    meetingPlace: 'Farm location',
-    paymentStatus: 'pending',
-    lastUpdated: '2024-01-15T10:15:00Z'
-  },
-  {
-    id: 'ORD-003',
-    product: 'Broccoli',
-    image: '🥦',
-    quantity: 80,
-    dealer: 'Green Veggies',
-    pricePerKg: 28,
-    totalAmount: 2240,
-    deliveryCost: 80,
-    grandTotal: 2320,
-    orderDate: '2024-01-13',
-    deliveryDate: '2024-01-17',
-    status: 'shipped',
-    progress: 90,
-    location: 'Nashik, Maharashtra',
-    notes: 'Fresh broccoli heads',
-    deliveryMode: 'third_party',
-    meetingPlace: 'Logistics warehouse',
-    paymentStatus: 'pending',
-    lastUpdated: '2024-01-16T09:45:00Z'
-  },
-  {
-    id: 'ORD-004',
-    product: 'Potato',
-    image: '🥔',
-    quantity: 200,
-    dealer: 'Spud Distributors',
-    pricePerKg: 15,
-    totalAmount: 3000,
-    deliveryCost: 150,
-    grandTotal: 3150,
-    orderDate: '2024-01-10',
-    deliveryDate: '2024-01-15',
-    status: 'delivered',
-    progress: 100,
-    location: 'Nagpur, Maharashtra',
-    notes: 'Russet potatoes, size medium',
-    deliveryMode: 'farmer_delivery',
-    meetingPlace: 'Spud Distributors warehouse',
-    paymentStatus: 'paid',
-    lastUpdated: '2024-01-15T16:20:00Z'
-  },
-  {
-    id: 'ORD-005',
-    product: 'Apple',
-    image: '🍎',
-    quantity: 75,
-    dealer: 'Fruit Paradise',
-    pricePerKg: 45,
-    totalAmount: 3375,
-    deliveryCost: 75,
-    grandTotal: 3450,
-    orderDate: '2024-01-12',
-    deliveryDate: '2024-01-19',
-    status: 'pending',
-    progress: 25,
-    location: 'Kolhapur, Maharashtra',
-    notes: 'Shimla apples, premium quality',
-    deliveryMode: 'meet_point',
-    meetingPlace: 'City market center',
-    paymentStatus: 'pending',
-    lastUpdated: '2024-01-12T11:30:00Z'
-  },
-  {
-    id: 'ORD-006',
-    product: 'Carrot',
-    image: '🥕',
-    quantity: 120,
-    dealer: 'Fresh Roots',
-    pricePerKg: 18,
-    totalAmount: 2160,
-    deliveryCost: 120,
-    grandTotal: 2280,
-    orderDate: '2024-01-08',
-    deliveryDate: '2024-01-12',
-    status: 'cancelled',
-    progress: 0,
-    location: 'Satara, Maharashtra',
-    notes: 'Nantes carrots, fresh harvest',
-    deliveryMode: 'farmer_delivery',
-    meetingPlace: 'Fresh Roots store',
-    paymentStatus: 'failed',
-    lastUpdated: '2024-01-09T15:45:00Z'
-  }
+const statusFilterDefs = [
+  { id: 'all', label: 'All Orders' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'accepted', label: 'Accepted' },
+  { id: 'processing', label: 'Processing' },
+  { id: 'shipped', label: 'Shipped' },
+  { id: 'delivered', label: 'Delivered' },
+  { id: 'cancelled', label: 'Cancelled' }
 ];
 
-const statusFilters = [
-  { id: 'all', label: 'All Orders', count: 6 },
-  { id: 'pending', label: 'Pending', count: 1 },
-  { id: 'accepted', label: 'Accepted', count: 1 },
-  { id: 'processing', label: 'Processing', count: 1 },
-  { id: 'shipped', label: 'Shipped', count: 1 },
-  { id: 'delivered', label: 'Delivered', count: 1 },
-  { id: 'cancelled', label: 'Cancelled', count: 1 }
-];
+const statusProgressMap = {
+  pending: 20,
+  accepted: 35,
+  processing: 60,
+  shipped: 85,
+  delivered: 100,
+  cancelled: 0,
+};
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -166,9 +46,56 @@ function FarmerOrders() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [orders, setOrders] = useState([]);
+
+  const normalizeOrder = (order) => {
+    const pricePerKg = Number(order.agreedPrice ?? order.pricePerKg ?? 0);
+    const quantity = Number(order.quantity ?? 0);
+    const deliveryCost = Number(order.deliveryCost ?? 0);
+    const totalAmount = Number(order.totalAmount ?? pricePerKg * quantity);
+    const grandTotal = Number(order.grandTotal ?? totalAmount + deliveryCost);
+    const status = order.status || 'pending';
+
+    return {
+      id: order._id || order.id,
+      product: order.product || 'Product',
+      image: order.productImage || order.image || '🌾',
+      quantity,
+      dealer: order.dealerName || order.dealer || 'Dealer',
+      pricePerKg,
+      totalAmount,
+      deliveryCost,
+      grandTotal,
+      orderDate: order.orderDate || order.createdAt || new Date().toISOString(),
+      deliveryDate: order.deliveryDate || 'TBD',
+      status,
+      progress: order.progress ?? statusProgressMap[status] ?? 0,
+      location: order.location || 'India',
+      notes: order.notes || '',
+      deliveryMode: order.deliveryMode || 'farmer_delivery',
+      meetingPlace: order.meetingPlace || 'To be discussed',
+      paymentStatus: order.paymentStatus || 'pending',
+      lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
+    };
+  };
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const data = await fetchMyOrders();
+        const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
+        setOrders(normalized);
+      } catch (error) {
+        console.error('Failed to fetch farmer orders', error);
+        setOrders([]);
+      }
+    };
+
+    loadOrders();
+  }, []);
 
   // Filter orders
-  const filteredOrders = mockOrders.filter(order => {
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          order.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          order.dealer.toLowerCase().includes(searchQuery.toLowerCase());
@@ -180,10 +107,10 @@ function FarmerOrders() {
 
   // Statistics
   const stats = {
-    totalOrders: mockOrders.length,
-    activeOrders: mockOrders.filter(o => ['pending', 'accepted', 'processing', 'shipped'].includes(o.status)).length,
-    totalEarnings: mockOrders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.grandTotal, 0),
-    pendingPayment: mockOrders.filter(o => o.paymentStatus === 'pending').reduce((sum, o) => sum + o.grandTotal, 0)
+    totalOrders: orders.length,
+    activeOrders: orders.filter(o => ['pending', 'accepted', 'processing', 'shipped'].includes(o.status)).length,
+    totalEarnings: orders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.grandTotal, 0),
+    pendingPayment: orders.filter(o => o.paymentStatus === 'pending').reduce((sum, o) => sum + o.grandTotal, 0)
   };
 
   const handleViewDetails = (order) => {
@@ -322,7 +249,9 @@ function FarmerOrders() {
         {/* Filter Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 p-4 mb-6">
           <div className="flex flex-wrap gap-2">
-            {statusFilters.map((filter) => (
+            {statusFilterDefs.map((filter) => {
+              const count = filter.id === "all" ? orders.length : orders.filter((o) => o.status === filter.id).length;
+              return (
               <button
                 key={filter.id}
                 onClick={() => setSelectedStatus(filter.id)}
@@ -338,10 +267,11 @@ function FarmerOrders() {
                     ? 'bg-white text-green-600'
                     : 'bg-gray-300 text-gray-700'
                 }`}>
-                  {filter.count}
+                  {count}
                 </span>
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
 
