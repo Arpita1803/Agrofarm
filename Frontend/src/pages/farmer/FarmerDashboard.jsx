@@ -1,4 +1,4 @@
- import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchRequests } from "../../services/requestApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
@@ -133,4 +133,4 @@ function FarmerDashboard() {
   );
 }
 
-export default FarmerDashboard;
+export default FarmerDashboard; 
