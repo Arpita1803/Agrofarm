@@ -1,38 +1,43 @@
 import express from "express";
 import Ad from "../models/Ad.js";
-import User from "../models/User.js";
-import { sendEmail } from "../services/emailService.js";
-import { sendSMS } from "../services/smsService.js";
+import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+// Create ad (farmer only)
+router.post("/", authMiddleware, async (req, res) => {
   try {
-    const ad = await Ad.create(req.body);
-
-    // find all dealers
-    const dealers = await User.find({ role: "dealer" });
-
-    for (const dealer of dealers) {
-      if (dealer.email) {
-        await sendEmail(
-          dealer.email,
-          "New Farmer Advertisement 🌾",
-          `Product: ${ad.product}\nQuantity: ${ad.quantity} kg\nPrice: ₹${ad.price}`
-        );
-      }
-
-      if (dealer.phone) {
-        await sendSMS(
-          dealer.phone,
-          `New farmer ad: ${ad.product}, ${ad.quantity}kg at ₹${ad.price}`
-        );
-      }
+    if (!req.user || req.user.role !== "farmer") {
+      return res.status(403).json({ message: "Only farmers can create ads" });
     }
 
-    res.status(201).json(ad);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to create ad" });
+    const { product, quantity, price, location } = req.body;
+
+    if (!product || quantity === undefined || price === undefined) {
+      return res.status(400).json({ message: "product, quantity and price are required" });
+    }
+
+    const ad = await Ad.create({
+      farmerId: req.user.id,
+      product,
+      quantity: Number(quantity),
+      price: Number(price),
+      location: location || "India",
+    });
+
+    return res.status(201).json(ad);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+// List ads
+router.get("/", async (_req, res) => {
+  try {
+    const ads = await Ad.find().sort({ createdAt: -1 });
+    return res.json(ads);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 });
 
