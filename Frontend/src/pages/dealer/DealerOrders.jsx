@@ -1,106 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OrderDetails from '../../components/orders/OrderDetails';
+import { fetchMyOrders, updateOrderStatus } from '../../services/orderApi';
 
-// Mock order data for dealer
-const mockOrders = [
-  {
-    id: 'ORD-001',
-    product: 'Tomato',
-    image: '🍅',
-    quantity: 50,
-    farmer: 'Singh Farms',
-    pricePerKg: 12,
-    totalAmount: 600,
-    deliveryCost: 50,
-    grandTotal: 650,
-    orderDate: '2024-01-15',
-    deliveryDate: '2024-01-18',
-    status: 'accepted',
-    progress: 75,
-    location: 'Nashik, Maharashtra',
-    notes: 'Fresh Roma tomatoes, Grade A quality',
-    deliveryMode: 'farmer_delivery',
-    meetingPlace: 'Rajesh Traders, Mumbai Central',
-    paymentStatus: 'pending',
-    farmerRating: 4.5,
-    lastUpdated: '2024-01-16T14:30:00Z'
-  },
-  {
-    id: 'ORD-002',
-    product: 'Orange',
-    image: '🍊',
-    quantity: 100,
-    farmer: 'Patel Orchards',
-    pricePerKg: 11,
-    totalAmount: 1100,
-    deliveryCost: 100,
-    grandTotal: 1200,
-    orderDate: '2024-01-14',
-    deliveryDate: '2024-01-20',
-    status: 'processing',
-    progress: 50,
-    location: 'Nagpur, Maharashtra',
-    notes: 'Navel oranges, sweet and juicy',
-    deliveryMode: 'dealer_pickup',
-    meetingPlace: 'Farm location',
-    paymentStatus: 'pending',
-    farmerRating: 4.2,
-    lastUpdated: '2024-01-15T10:15:00Z'
-  },
-  {
-    id: 'ORD-003',
-    product: 'Broccoli',
-    image: '🥦',
-    quantity: 80,
-    farmer: 'Green Valley Farms',
-    pricePerKg: 28,
-    totalAmount: 2240,
-    deliveryCost: 80,
-    grandTotal: 2320,
-    orderDate: '2024-01-13',
-    deliveryDate: '2024-01-17',
-    status: 'pending',
-    progress: 25,
-    location: 'Pune, Maharashtra',
-    notes: 'Fresh broccoli heads',
-    deliveryMode: 'third_party',
-    meetingPlace: 'Logistics warehouse',
-    paymentStatus: 'pending',
-    farmerRating: 4.8,
-    lastUpdated: '2024-01-13T16:45:00Z'
-  },
-  {
-    id: 'ORD-004',
-    product: 'Potato',
-    image: '🥔',
-    quantity: 200,
-    farmer: 'Kumar Farms',
-    pricePerKg: 15,
-    totalAmount: 3000,
-    deliveryCost: 150,
-    grandTotal: 3150,
-    orderDate: '2024-01-10',
-    deliveryDate: '2024-01-15',
-    status: 'delivered',
-    progress: 100,
-    location: 'Satara, Maharashtra',
-    notes: 'Russet potatoes, size medium',
-    deliveryMode: 'farmer_delivery',
-    meetingPlace: 'Spud Distributors warehouse',
-    paymentStatus: 'paid',
-    farmerRating: 4.0,
-    lastUpdated: '2024-01-15T16:20:00Z'
-  }
+const statusFilterDefs = [
+  { id: 'all', label: 'All Orders' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'accepted', label: 'Accepted' },
+  { id: 'processing', label: 'Processing' },
+  { id: 'shipped', label: 'Shipped' },
+  { id: 'delivered', label: 'Delivered' },
+  { id: 'cancelled', label: 'Cancelled' }
 ];
 
-const statusFilters = [
-  { id: 'all', label: 'All Orders', count: 4 },
-  { id: 'pending', label: 'Pending', count: 1 },
-  { id: 'accepted', label: 'Accepted', count: 1 },
-  { id: 'processing', label: 'Processing', count: 1 },
-  { id: 'delivered', label: 'Delivered', count: 1 }
-];
+const statusProgressMap = {
+  pending: 20,
+  accepted: 35,
+  processing: 60,
+  shipped: 85,
+  delivered: 100,
+  cancelled: 0,
+};
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -126,9 +46,59 @@ function DealerOrders() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [orders, setOrders] = useState([]);
+
+  const normalizeOrder = (order) => {
+    const pricePerKg = Number(order.agreedPrice ?? order.pricePerKg ?? 0);
+    const quantity = Number(order.quantity ?? 0);
+    const deliveryCost = Number(order.deliveryCost ?? 0);
+    const totalAmount = Number(order.totalAmount ?? pricePerKg * quantity);
+    const grandTotal = Number(order.grandTotal ?? totalAmount + deliveryCost);
+    const status = order.status || 'pending';
+
+    return {
+      id: order._id || order.id,
+      product: order.product || 'Product',
+      image: order.productImage || order.image || '🌾',
+      quantity,
+      farmer: order.farmerName || order.farmer || 'Farmer',
+      pricePerKg,
+      totalAmount,
+      deliveryCost,
+      grandTotal,
+      orderDate: order.orderDate || order.createdAt || new Date().toISOString(),
+      deliveryDate: order.deliveryDate || 'TBD',
+      status,
+      progress: order.progress ?? statusProgressMap[status] ?? 0,
+      location: order.location || 'India',
+      notes: order.notes || '',
+      deliveryMode: order.deliveryMode || 'farmer_delivery',
+      meetingPlace: order.meetingPlace || 'To be discussed',
+      paymentStatus: order.paymentStatus || 'pending',
+      farmerRating: order.farmerRating || 4.5,
+      lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
+      farmerId: order.farmerId,
+      dealerId: order.dealerId,
+    };
+  };
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const data = await fetchMyOrders();
+        const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
+        setOrders(normalized);
+      } catch (error) {
+        console.error('Failed to fetch dealer orders', error);
+        setOrders([]);
+      }
+    };
+
+    loadOrders();
+  }, []);
 
   // Filter orders
-  const filteredOrders = mockOrders.filter(order => {
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          order.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          order.farmer.toLowerCase().includes(searchQuery.toLowerCase());
@@ -140,10 +110,35 @@ function DealerOrders() {
 
   // Statistics
   const stats = {
-    totalOrders: mockOrders.length,
-    activeOrders: mockOrders.filter(o => ['pending', 'accepted', 'processing'].includes(o.status)).length,
-    totalSpent: mockOrders.reduce((sum, o) => sum + o.grandTotal, 0),
-    pendingOrders: mockOrders.filter(o => o.status === 'pending').length
+    totalOrders: orders.length,
+    activeOrders: orders.filter(o => ['pending', 'accepted', 'processing', 'shipped'].includes(o.status)).length,
+    totalSpent: orders.reduce((sum, o) => sum + o.grandTotal, 0),
+    pendingOrders: orders.filter(o => o.status === 'pending').length
+  };
+
+  const applyLocalStatus = (orderId, status) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status,
+              progress: statusProgressMap[status] ?? o.progress,
+              lastUpdated: new Date().toISOString(),
+            }
+          : o
+      )
+    );
+
+    setSelectedOrder((prev) => {
+      if (!prev || prev.id !== orderId) return prev;
+      return {
+        ...prev,
+        status,
+        progress: statusProgressMap[status] ?? prev.progress,
+        lastUpdated: new Date().toISOString(),
+      };
+    });
   };
 
   const handleViewDetails = (order) => {
@@ -162,22 +157,36 @@ function DealerOrders() {
           product: order.product,
           farmer: order.farmer,
           image: order.image
-        }
+        },
+        chatContext: {
+          orderId: order.id,
+          otherUserId: order.farmerId,
+        },
       }
     });
   };
 
-  const handleAcceptOrder = (order) => {
-    if (window.confirm(`Accept order ${order.id} from ${order.farmer}?`)) {
+  const handleAcceptOrder = async (order) => {
+    if (!window.confirm(`Accept order ${order.id} from ${order.farmer}?`)) return;
+
+    try {
+      await updateOrderStatus(order.id, 'accepted');
+      applyLocalStatus(order.id, 'accepted');
       alert(`Order ${order.id} accepted.`);
-      // In real app, update order status via API
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to accept order');
     }
   };
 
-  const handleRejectOrder = (order) => {
-    if (window.confirm(`Reject order ${order.id}?`)) {
+  const handleRejectOrder = async (order) => {
+    if (!window.confirm(`Reject order ${order.id}?`)) return;
+
+    try {
+      await updateOrderStatus(order.id, 'cancelled');
+      applyLocalStatus(order.id, 'cancelled');
       alert(`Order ${order.id} rejected.`);
-      // In real app, update order status via API
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to reject order');
     }
   };
 
@@ -288,7 +297,9 @@ function DealerOrders() {
         {/* Filter Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 p-4 mb-6">
           <div className="flex flex-wrap gap-2">
-            {statusFilters.map((filter) => (
+            {statusFilterDefs.map((filter) => {
+              const count = filter.id === "all" ? orders.length : orders.filter((o) => o.status === filter.id).length;
+              return (
               <button
                 key={filter.id}
                 onClick={() => setSelectedStatus(filter.id)}
@@ -304,10 +315,11 @@ function DealerOrders() {
                     ? 'bg-white text-green-600'
                     : 'bg-gray-300 text-gray-700'
                 }`}>
-                  {filter.count}
+                  {count}
                 </span>
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
 
