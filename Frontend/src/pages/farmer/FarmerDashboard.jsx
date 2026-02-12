@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchRequests } from "../../services/requestApi";
+import { acceptRequest, fetchRequests } from "../../services/requestApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
 import LanguageSelection from "../../components/common/LanguageSelection";
 
@@ -14,17 +14,17 @@ function FarmerDashboard() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [requestToChat, setRequestToChat] = useState(null);
 
-  useEffect(() => {
-    const loadRequests = async () => {
-      try {
-        const data = await fetchRequests();
-        setRequests(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to load requests", error);
-        setRequests([]);
-      }
-    };
+  const loadRequests = async () => {
+    try {
+      const data = await fetchRequests();
+      setRequests(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load requests", error);
+      setRequests([]);
+    }
+  };
 
+  useEffect(() => {
     loadRequests();
   }, []);
 
@@ -52,6 +52,21 @@ function FarmerDashboard() {
         userLanguage: language,
       },
     });
+  };
+
+  const handleAcceptRequest = async (request) => {
+    try {
+      await acceptRequest(request._id);
+      alert("Request accepted. Order created successfully.");
+
+      setShowRequestDetails(false);
+      setSelectedRequest(null);
+
+      await loadRequests();
+      navigate("/farmer/orders");
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to accept request");
+    }
   };
 
   const formatPrice = (request) => {
@@ -116,6 +131,7 @@ function FarmerDashboard() {
             setShowRequestDetails(false);
             setSelectedRequest(null);
           }}
+          onAcceptRequest={handleAcceptRequest}
           onStartChat={() => handleStartChat(selectedRequest)}
         />
       )}
@@ -133,4 +149,4 @@ function FarmerDashboard() {
   );
 }
 
-export default FarmerDashboard; 
+export default FarmerDashboard;

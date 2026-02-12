@@ -32,3 +32,13 @@ export const fetchRequests = async () => {
     return [];
   }
 };
+
+export const acceptRequest = async (requestId, payload = {}) => {
+  try {
+    const res = await API.post(`/requests/${requestId}/accept`, payload);
+    return res.data;
+  } catch (error) {
+    console.error("Accept request error:", error.response?.data || error.message);
+    throw error;
+  }
+};
