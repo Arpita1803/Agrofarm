@@ -25,7 +25,7 @@ function DealerPriceRecommendation() {
       const payload = {
         crop: formData.crop.trim(),
         district: formData.district.trim(),
-        month: Number(formData.month), // important
+        month: Number(formData.month),
       };
 
       const response = await fetch("http://localhost:5001/predict-price", {
@@ -96,9 +96,7 @@ function DealerPriceRecommendation() {
 
       {price !== null && (
         <div className="mt-4">
-          <p className="text-lg font-semibold text-green-700">
-            ₹ {price} per Quintal
-          </p>
+          <p className="text-lg font-semibold text-green-700">₹ {price} per Quintal</p>
           {meta && (
             <div className="text-sm text-gray-600 mt-2 space-y-1">
               <p>Target Year: {meta.targetYear}</p>
