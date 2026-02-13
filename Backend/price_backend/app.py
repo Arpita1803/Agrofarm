@@ -6,32 +6,54 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Real dataset is tab-separated
-raw_df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
 
-# Map raw columns -> canonical columns used in this service
-# raw: crop_type, state, city, season, month, year, Modal_price
-# canonical: crop, district, month, year, modal_price
-df = raw_df.rename(
-    columns={
+def load_dataset():
+    raw_df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
+
+    # Normalize incoming headers (handles casing/extra spaces/BOM)
+    normalized = {str(col): str(col).strip().lower() for col in raw_df.columns}
+    df = raw_df.rename(columns=normalized).copy()
+
+    # Map the known variants used across different sheet exports
+    rename_map = {
         "crop_type": "crop",
+        "crop": "crop",
+        "commodity": "crop",
         "city": "district",
+        "district": "district",
+        "market": "district",
         "month": "month",
         "year": "year",
-        "Modal_price": "modal_price",
+        "modal_price": "modal_price",
+        "modal price": "modal_price",
         "state": "state",
         "season": "season",
     }
-).copy()
+    df = df.rename(columns={c: rename_map[c] for c in df.columns if c in rename_map})
 
-for text_col in ["crop", "district", "state", "season"]:
-    if text_col in df.columns:
-        df[text_col] = df[text_col].astype(str).str.strip().str.lower()
+    required = ["crop", "district", "month", "year", "modal_price"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Dataset missing required columns: {missing}. Found columns: {list(df.columns)}"
+        )
 
-for num_col in ["month", "year", "modal_price"]:
-    df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
+    for text_col in ["crop", "district", "state", "season"]:
+        if text_col in df.columns:
+            df[text_col] = df[text_col].astype(str).str.strip().str.lower()
 
-df = df.dropna(subset=["crop", "district", "month", "year", "modal_price"])
+    for num_col in ["month", "year", "modal_price"]:
+        df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
+
+    return df.dropna(subset=required)
+
+
+try:
+    df = load_dataset()
+except Exception as exc:
+    # Keep startup error explicit in console while still allowing controlled JSON error response.
+    print(f"Dataset load failed: {exc}")
+    df = pd.DataFrame()
 
 
 def validate_payload(payload):
@@ -72,6 +94,9 @@ def train_and_predict(filtered_df):
 
 @app.route("/predict-price", methods=["POST"])
 def predict_price():
+    if df.empty:
+        return jsonify({"error": "Dataset is not loaded correctly on server"}), 500
+
     data = request.get_json(silent=True) or {}
     error = validate_payload(data)
     if error:
@@ -90,7 +115,7 @@ def predict_price():
     source_level = "district"
 
     # Level 2: state fallback for same crop + month
-    if len(filtered) < 2:
+    if len(filtered) < 2 and "state" in df.columns:
         states = df.loc[df["district"] == district, "state"].dropna().unique().tolist()
         if states:
             state_filtered = df[
