@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RequestForm from '../../components/dealer/RequestForm';
+import { fetchRequests } from '../../services/requestApi';
+import { fetchMyOrders } from '../../services/orderApi';
+import { fetchMyChats } from '../../services/chatApi';
+import { getCurrentUser } from '../../utils/roleGuard';
 
 const categories = [
   {
@@ -154,6 +158,49 @@ function DealerDashboard() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [stats, setStats] = useState({
+    myOpenRequests: 0,
+    activeOrders: 0,
+    chats: 0,
+  });
+
+  useEffect(() => {
+    const loadDealerDashboard = async () => {
+      const user = getCurrentUser();
+      if (user.role && user.role !== 'dealer') {
+        navigate('/login');
+        return;
+      }
+
+      try {
+        const [requests, orders, chats] = await Promise.all([
+          fetchRequests(),
+          fetchMyOrders(),
+          fetchMyChats(),
+        ]);
+
+        const myOpenRequests = Array.isArray(requests)
+          ? requests.filter((r) => String(r?.dealerId || '') === String(user.userId || '') && (r?.status || 'open') === 'open').length
+          : 0;
+
+        const activeOrders = Array.isArray(orders)
+          ? orders.filter((o) => !['delivered', 'cancelled'].includes(o?.status)).length
+          : 0;
+
+        const chatCount = Array.isArray(chats) ? chats.length : 0;
+
+        setStats({
+          myOpenRequests,
+          activeOrders,
+          chats: chatCount,
+        });
+      } catch (error) {
+        console.error('Failed to load dealer dashboard stats', error);
+      }
+    };
+
+    loadDealerDashboard();
+  }, [navigate]);
 
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -271,6 +318,21 @@ function DealerDashboard() {
         <h2 className="text-2xl font-bold mb-6">
           Welcome back 👋
         </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white border rounded-xl p-4 shadow-sm">
+            <p className="text-sm text-gray-600">My Open Requests</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.myOpenRequests}</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4 shadow-sm">
+            <p className="text-sm text-gray-600">My Active Orders</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.activeOrders}</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4 shadow-sm">
+            <p className="text-sm text-gray-600">My Chats</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.chats}</p>
+          </div>
+        </div>
 
         {/* PRICE PREDICTION */}
         <div className="mb-8">

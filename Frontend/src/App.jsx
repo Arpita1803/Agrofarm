@@ -18,6 +18,7 @@ import FarmerChats from './pages/farmer/FarmerChats'
 
 import ChatInterface from './pages/ChatInterface'
 import DealerPriceRecommendation from "./components/dealer/DealerPriceRecommendation";
+import AuthorityDashboard from './pages/authority/AuthorityDashboard'
 
 import './App.css'
 
@@ -44,6 +45,9 @@ function App() {
         <Route path="/farmer/orders" element={<FarmerOrders />} />
         <Route path="/farmer/products" element={<FarmerProducts />} />
         <Route path="/farmer/chats" element={<FarmerChats />} />
+
+        {/* Authority Routes */}
+        <Route path="/authority/dashboard" element={<AuthorityDashboard />} />
 
         {/* Common Routes */}
         <Route path="/chat/:chatId" element={<ChatInterface />} />
