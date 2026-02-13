@@ -28,7 +28,7 @@ function DealerPriceRecommendation() {
         month: Number(formData.month), // important
       };
 
-      const response = await fetch("http://localhost:5000/predict-price", {
+      const response = await fetch("http://localhost:5001/predict-price", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
