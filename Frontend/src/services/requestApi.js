@@ -1,30 +1,45 @@
-export const decodeTokenPayload = () => {
+
+import axios from "axios";
+
+const API = axios.create({
+  baseURL: "http://localhost:5000/api",
+});
+
+// attach token if exists
+API.interceptors.request.use((req) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    req.headers.Authorization = `Bearer ${token}`;
+  }
+  return req;
+});
+
+export const createRequest = async (data) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) return {};
-
-    const payload = token.split('.')[1];
-    if (!payload) return {};
-
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const json = decodeURIComponent(
-      atob(normalized)
-        .split('')
-        .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
-        .join('')
-    );
-
-    return JSON.parse(json);
-  } catch {
-    return {};
+    const res = await API.post("/requests", data);
+    return res.data;
+  } catch (error) {
+    console.error("Create request error:", error.response?.data || error.message);
+    throw error;
   }
 };
 
-export const getCurrentUser = () => {
-  const payload = decodeTokenPayload();
-  return {
-    role: localStorage.getItem('role') || payload?.role,
-    userId: payload?.id || payload?.userId || payload?._id,
-    name: localStorage.getItem('name') || payload?.name,
-  };
+export const fetchRequests = async () => {
+  try {
+    const res = await API.get("/requests");
+    return res.data;
+  } catch (error) {
+    console.error("Fetch requests error:", error.response?.data || error.message);
+    return [];
+  }
+};
+
+export const acceptRequest = async (requestId, payload = {}) => {
+  try {
+    const res = await API.post(`/requests/${requestId}/accept`, payload);
+    return res.data;
+  } catch (error) {
+    console.error("Accept request error:", error.response?.data || error.message);
+    throw error;
+  }
 };
