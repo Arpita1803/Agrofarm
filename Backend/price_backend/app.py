@@ -6,39 +6,41 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Load TSV dataset (real file is tab-separated)
-df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
+# Real dataset is tab-separated
+raw_df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
 
-# Map raw columns -> canonical columns
+# Map raw columns -> canonical columns used in this service
 # raw: crop_type, state, city, season, month, year, Modal_price
-df = df.rename(columns={
-    "crop_type": "Crop",
-    "city": "District",
-    "month": "Month",
-    "year": "Year",
-    "Modal_price": "Modal_Price",
-}).copy()
+# canonical: crop, district, month, year, modal_price
+df = raw_df.rename(
+    columns={
+        "crop_type": "crop",
+        "city": "district",
+        "month": "month",
+        "year": "year",
+        "Modal_price": "modal_price",
+        "state": "state",
+        "season": "season",
+    }
+).copy()
 
-# Basic cleaning/typing
-for col in ["crop", "district", "state", "season"]:
-    if col in df.columns:
-        df[col] = df[col].astype(str).str.strip().str.lower()
-        df["Crop"] = df["Crop"].astype(str).str.strip()
-        df["District"] = df["District"].astype(str).str.strip()
+for text_col in ["crop", "district", "state", "season"]:
+    if text_col in df.columns:
+        df[text_col] = df[text_col].astype(str).str.strip().str.lower()
 
-df["Month"] = pd.to_numeric(df["Month"], errors="coerce")
-df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
-df["Modal_Price"] = pd.to_numeric(df["Modal_Price"], errors="coerce")
-df = df.dropna(subset=["crop", "district", "Month", "Year", "Modal_Price"])
+for num_col in ["month", "year", "modal_price"]:
+    df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
+
+df = df.dropna(subset=["crop", "district", "month", "year", "modal_price"])
 
 
-def _validate_payload(data):
-    if not isinstance(data, dict):
+def validate_payload(payload):
+    if not isinstance(payload, dict):
         return "Invalid JSON payload"
 
-    crop = str(data.get("crop", "")).strip().lower()
-    district = str(data.get("district", "")).strip().lower()
-    month_raw = data.get("month", None)
+    crop = str(payload.get("crop", "")).strip().lower()
+    district = str(payload.get("district", "")).strip().lower()
+    month_raw = payload.get("month")
 
     if not crop:
         return "crop is required"
@@ -56,22 +58,22 @@ def _validate_payload(data):
     return None
 
 
-def _train_and_predict(filtered_df):
-    X = filtered_df[["Year"]]
-    y = filtered_df["Modal_Price"]
+def train_and_predict(filtered_df):
+    X = filtered_df[["year"]]
+    y = filtered_df["modal_price"]
 
     model = LinearRegression()
     model.fit(X, y)
 
-    target_year = int(filtered_df["Year"].max()) + 1
-    predicted_price = float(model.predict([[target_year]])[0])
-    return round(predicted_price, 2), target_year
+    next_year = int(filtered_df["year"].max()) + 1
+    predicted_price = float(model.predict([[next_year]])[0])
+    return round(predicted_price, 2), next_year
 
 
 @app.route("/predict-price", methods=["POST"])
 def predict_price():
     data = request.get_json(silent=True) or {}
-    error = _validate_payload(data)
+    error = validate_payload(data)
     if error:
         return jsonify({"error": error}), 400
 
@@ -79,60 +81,59 @@ def predict_price():
     district = str(data["district"]).strip().lower()
     month = int(data["month"])
 
-    # Level 1: exact (crop + district + month)
-    exact = df[
-        (df["crop"] == crop) &
-        (df["district"] == district) &
-        (df["Month"] == month)
+    # Level 1: exact crop + district + month
+    filtered = df[
+        (df["crop"] == crop)
+        & (df["district"] == district)
+        & (df["month"] == month)
     ]
-
     source_level = "district"
 
-    # Level 2 fallback: crop + month + state of district (if identifiable)
-    if len(exact) < 2:
+    # Level 2: state fallback for same crop + month
+    if len(filtered) < 2:
         states = df.loc[df["district"] == district, "state"].dropna().unique().tolist()
-        state_df = pd.DataFrame()
         if states:
-            state_df = df[
-                (df["crop"] == crop) &
-                (df["state"].isin(states)) &
-                (df["Month"] == month)
+            state_filtered = df[
+                (df["crop"] == crop)
+                & (df["state"].isin(states))
+                & (df["month"] == month)
             ]
-        if len(state_df) >= 2:
-            exact = state_df
-            source_level = "state"
+            if len(state_filtered) >= 2:
+                filtered = state_filtered
+                source_level = "state"
 
-    # Level 3 fallback: crop + month (all India/global in dataset)
-    if len(exact) < 2:
-        global_df = df[
-            (df["crop"] == crop) &
-            (df["Month"] == month)
-        ]
-        if len(global_df) >= 2:
-            exact = global_df
+    # Level 3: global fallback for same crop + month
+    if len(filtered) < 2:
+        global_filtered = df[(df["crop"] == crop) & (df["month"] == month)]
+        if len(global_filtered) >= 2:
+            filtered = global_filtered
             source_level = "global"
 
-    if len(exact) < 2:
-        return jsonify({
-            "error": "Not enough data for this crop+district+month",
-            "required_min_samples": 2,
-            "found_samples": int(len(exact))
-        }), 400
+    if len(filtered) < 2:
+        return jsonify(
+            {
+                "error": "Not enough data for this crop+district+month",
+                "required_min_samples": 2,
+                "found_samples": int(len(filtered)),
+            }
+        ), 400
 
-    predicted_price, target_year = _train_and_predict(exact)
+    predicted_price, target_year = train_and_predict(filtered)
 
-    return jsonify({
-        "predicted_price": predicted_price,
-        "unit": "INR/quintal",
-        "target_year": target_year,
-        "sample_size": int(len(exact)),
-        "source_level": source_level,
-        "input": {
-            "crop": crop,
-            "district": district,
-            "month": month
+    return jsonify(
+        {
+            "predicted_price": predicted_price,
+            "unit": "INR/quintal",
+            "target_year": target_year,
+            "sample_size": int(len(filtered)),
+            "source_level": source_level,
+            "input": {
+                "crop": crop,
+                "district": district,
+                "month": month,
+            },
         }
-    })
+    )
 
 
 if __name__ == "__main__":
