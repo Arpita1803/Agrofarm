@@ -9,6 +9,9 @@ const statusFilterDefs = [
   { id: 'accepted', label: 'Accepted' },
   { id: 'processing', label: 'Processing' },
   { id: 'shipped', label: 'Shipped' },
+
+
+
   { id: 'delivered', label: 'Delivered' },
   { id: 'cancelled', label: 'Cancelled' }
 ];
@@ -18,6 +21,9 @@ const statusProgressMap = {
   accepted: 35,
   processing: 60,
   shipped: 85,
+
+
+
   delivered: 100,
   cancelled: 0,
 };
@@ -27,6 +33,9 @@ const statusColors = {
   accepted: 'bg-blue-100 text-blue-800',
   processing: 'bg-purple-100 text-purple-800',
   shipped: 'bg-indigo-100 text-indigo-800',
+
+
+
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800'
 };
@@ -36,6 +45,9 @@ const statusLabels = {
   accepted: 'Accepted',
   processing: 'Processing',
   shipped: 'Shipped',
+
+
+
   delivered: 'Delivered',
   cancelled: 'Cancelled'
 };
@@ -178,6 +190,20 @@ function FarmerOrders() {
     }
   };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const getStatusIcon = (status) => {
     switch(status) {
       case 'pending': return '⏳';
@@ -185,6 +211,9 @@ function FarmerOrders() {
       case 'processing': return '🔄';
       case 'shipped': return '🚚';
       case 'delivered': return '📦';
+
+
+
       case 'cancelled': return '❌';
       default: return '📝';
     }
@@ -449,6 +478,7 @@ function FarmerOrders() {
         <OrderDetails
           order={selectedOrder}
           userRole="farmer"
+
           onClose={() => {
             setShowOrderDetails(false);
             setSelectedOrder(null);
