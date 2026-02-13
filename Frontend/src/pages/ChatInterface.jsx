@@ -47,7 +47,13 @@ function ChatInterface() {
   const tokenPayload = useMemo(() => decodeTokenPayload(), []);
   const currentUserId = tokenPayload?.id || tokenPayload?.userId || tokenPayload?._id;
 
-  const [chatId, setChatId] = useState(isObjectId(routeChatId) ? routeChatId : null);
+  const [chatId, setChatId] = useState(
+    isObjectId(location.state?.chatId)
+      ? location.state.chatId
+      : isObjectId(routeChatId)
+      ? routeChatId
+      : null
+  );
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -70,13 +76,21 @@ function ChatInterface() {
 
         setBootstrapError('');
 
-        if (isObjectId(routeChatId)) {
-          setChatId(routeChatId);
+        if (isObjectId(location.state?.chatId)) {
+          setChatId(location.state.chatId);
           return;
         }
 
-        if (isObjectId(location.state?.chatId)) {
-          setChatId(location.state.chatId);
+        const hasContext = Boolean(
+          chatContext?.requestId ||
+            chatContext?.orderId ||
+            request?._id ||
+            request?.dealerId ||
+            request?.farmerId
+        );
+
+        if (isObjectId(routeChatId) && !hasContext) {
+          setChatId(routeChatId);
           return;
         }
 
