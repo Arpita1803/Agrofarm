@@ -7,29 +7,29 @@ app = Flask(__name__)
 CORS(app)
 
 # Load TSV dataset (real file is tab-separated)
-RAW_DF = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
+df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
 
 # Map raw columns -> canonical columns
 # raw: crop_type, state, city, season, month, year, Modal_price
-DF = RAW_DF.rename(columns={
-    "crop_type": "crop",
-    "city": "district",
-    "year": "year",
-    "month": "month",
-    "Modal_price": "modal_price",
-    "state": "state",
-    "season": "season",
+df = df.rename(columns={
+    "crop_type": "Crop",
+    "city": "District",
+    "month": "Month",
+    "year": "Year",
+    "Modal_price": "Modal_Price",
 }).copy()
 
 # Basic cleaning/typing
 for col in ["crop", "district", "state", "season"]:
-    if col in DF.columns:
-        DF[col] = DF[col].astype(str).str.strip().str.lower()
+    if col in df.columns:
+        df[col] = df[col].astype(str).str.strip().str.lower()
+        df["Crop"] = df["Crop"].astype(str).str.strip()
+        df["District"] = df["District"].astype(str).str.strip()
 
-DF["month"] = pd.to_numeric(DF["month"], errors="coerce")
-DF["year"] = pd.to_numeric(DF["year"], errors="coerce")
-DF["modal_price"] = pd.to_numeric(DF["modal_price"], errors="coerce")
-DF = DF.dropna(subset=["crop", "district", "month", "year", "modal_price"])
+df["Month"] = pd.to_numeric(df["Month"], errors="coerce")
+df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
+df["Modal_Price"] = pd.to_numeric(df["Modal_Price"], errors="coerce")
+df = df.dropna(subset=["crop", "district", "Month", "Year", "Modal_Price"])
 
 
 def _validate_payload(data):
@@ -57,13 +57,13 @@ def _validate_payload(data):
 
 
 def _train_and_predict(filtered_df):
-    X = filtered_df[["year"]]
-    y = filtered_df["modal_price"]
+    X = filtered_df[["Year"]]
+    y = filtered_df["Modal_Price"]
 
     model = LinearRegression()
     model.fit(X, y)
 
-    target_year = int(filtered_df["year"].max()) + 1
+    target_year = int(filtered_df["Year"].max()) + 1
     predicted_price = float(model.predict([[target_year]])[0])
     return round(predicted_price, 2), target_year
 
@@ -80,23 +80,23 @@ def predict_price():
     month = int(data["month"])
 
     # Level 1: exact (crop + district + month)
-    exact = DF[
-        (DF["crop"] == crop) &
-        (DF["district"] == district) &
-        (DF["month"] == month)
+    exact = df[
+        (df["crop"] == crop) &
+        (df["district"] == district) &
+        (df["Month"] == month)
     ]
 
     source_level = "district"
 
     # Level 2 fallback: crop + month + state of district (if identifiable)
     if len(exact) < 2:
-        states = DF.loc[DF["district"] == district, "state"].dropna().unique().tolist()
+        states = df.loc[df["district"] == district, "state"].dropna().unique().tolist()
         state_df = pd.DataFrame()
         if states:
-            state_df = DF[
-                (DF["crop"] == crop) &
-                (DF["state"].isin(states)) &
-                (DF["month"] == month)
+            state_df = df[
+                (df["crop"] == crop) &
+                (df["state"].isin(states)) &
+                (df["Month"] == month)
             ]
         if len(state_df) >= 2:
             exact = state_df
@@ -104,9 +104,9 @@ def predict_price():
 
     # Level 3 fallback: crop + month (all India/global in dataset)
     if len(exact) < 2:
-        global_df = DF[
-            (DF["crop"] == crop) &
-            (DF["month"] == month)
+        global_df = df[
+            (df["crop"] == crop) &
+            (df["Month"] == month)
         ]
         if len(global_df) >= 2:
             exact = global_df
