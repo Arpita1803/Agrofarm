@@ -23,6 +23,8 @@ function DealerChats() {
     };
 
     loadChats();
+    const timer = setInterval(loadChats, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const filteredChats = useMemo(() => {

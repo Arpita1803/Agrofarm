@@ -162,6 +162,7 @@ function DealerDashboard() {
     myOpenRequests: 0,
     activeOrders: 0,
     chats: 0,
+    unreadChats: 0,
   });
 
   useEffect(() => {
@@ -188,11 +189,15 @@ function DealerDashboard() {
           : 0;
 
         const chatCount = Array.isArray(chats) ? chats.length : 0;
+        const unreadChats = Array.isArray(chats)
+          ? chats.reduce((sum, chat) => sum + Number(chat?.unreadCount || 0), 0)
+          : 0;
 
         setStats({
           myOpenRequests,
           activeOrders,
           chats: chatCount,
+          unreadChats,
         });
       } catch (error) {
         console.error('Failed to load dealer dashboard stats', error);
@@ -200,6 +205,8 @@ function DealerDashboard() {
     };
 
     loadDealerDashboard();
+    const timer = setInterval(loadDealerDashboard, 8000);
+    return () => clearInterval(timer);
   }, [navigate]);
 
   const filteredCategories = categories.filter(category =>
@@ -239,8 +246,14 @@ function DealerDashboard() {
               <button
                 title="Chats"
                 onClick={() => navigate('/dealer/chats')}
+                className="relative"
               >
                 💬
+                {stats.unreadChats > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                    {stats.unreadChats}
+                  </span>
+                )}
               </button>
 
               {/* 3 DOTS */}
@@ -269,8 +282,13 @@ function DealerDashboard() {
                 🛒
               </button>
 
-              <button title="Chats" onClick={() => navigate('/dealer/chats')}>
+              <button title="Chats" onClick={() => navigate('/dealer/chats')} className="relative">
                 💬
+                {stats.unreadChats > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                    {stats.unreadChats}
+                  </span>
+                )}
               </button>
 
               {/* 3 DOTS */}

@@ -35,6 +35,21 @@ const decodeTokenPayload = () => {
   }
 };
 
+const translateText = async (text, targetLang) => {
+  if (!text || !targetLang) return '';
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(
+      targetLang
+    )}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    if (!res.ok) return '';
+    const data = await res.json();
+    return Array.isArray(data?.[0]) ? data[0].map((item) => item?.[0] || '').join('') : '';
+  } catch {
+    return '';
+  }
+};
+
 function ChatInterface() {
   const { chatId: routeChatId } = useParams();
   const navigate = useNavigate();
@@ -51,8 +66,8 @@ function ChatInterface() {
     isObjectId(location.state?.chatId)
       ? location.state.chatId
       : isObjectId(routeChatId)
-      ? routeChatId
-      : null
+        ? routeChatId
+        : null
   );
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -61,9 +76,10 @@ function ChatInterface() {
   const [showTranslation, setShowTranslation] = useState(true);
   const [showProceedDeal, setShowProceedDeal] = useState(false);
   const [bootstrapError, setBootstrapError] = useState('');
+  const [translatedMap, setTranslatedMap] = useState({});
 
   const otherUserLabel = role === 'dealer' ? request?.farmer || 'Farmer' : request?.dealer || 'Dealer';
-  const otherUserLanguage = userLanguage === 'en' ? 'hi' : 'en';
+  const targetLang = role === 'dealer' ? 'en' : userLanguage;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,7 +89,6 @@ function ChatInterface() {
     const bootstrapChat = async () => {
       try {
         setIsBootstrapping(true);
-
         setBootstrapError('');
 
         if (isObjectId(location.state?.chatId)) {
@@ -94,10 +109,7 @@ function ChatInterface() {
           return;
         }
 
-        const otherUserId =
-          chatContext?.otherUserId ||
-          request?.dealerId ||
-          request?.farmerId;
+        const otherUserId = chatContext?.otherUserId || request?.dealerId || request?.farmerId;
 
         const payload = {
           otherUserId,
@@ -126,19 +138,42 @@ function ChatInterface() {
   }, [routeChatId, location.state, chatContext, request]);
 
   useEffect(() => {
+    if (!chatId) return;
+
     const loadMessages = async () => {
-      if (!chatId) return;
       try {
         const data = await fetchChatMessages(chatId);
         setMessages(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to load messages:', error);
-        setMessages([]);
       }
     };
 
     loadMessages();
+    const timer = setInterval(loadMessages, 2500);
+    return () => clearInterval(timer);
   }, [chatId]);
+
+  useEffect(() => {
+    if (!showTranslation || !messages.length) return;
+
+    const populateTranslations = async () => {
+      for (const message of messages) {
+        const sender = message?.senderRole || (String(message?.senderId) === String(currentUserId) ? role : role === 'farmer' ? 'dealer' : 'farmer');
+        if (sender === role) continue;
+
+        const key = String(message?._id || `${message?.createdAt}-${message?.text}`);
+        if (translatedMap[key] || !message?.text) continue;
+
+        const translatedText = await translateText(message.text, targetLang);
+        if (translatedText) {
+          setTranslatedMap((prev) => ({ ...prev, [key]: translatedText }));
+        }
+      }
+    };
+
+    populateTranslations();
+  }, [messages, showTranslation, targetLang, role, currentUserId, translatedMap]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !chatId) return;
@@ -200,8 +235,8 @@ function ChatInterface() {
               <div>
                 <h1 className="text-lg font-bold text-gray-900">{otherUserLabel}</h1>
                 <div className="text-xs text-gray-600">
-                  <span className="mr-2">{languageMap[userLanguage]?.flag} {languageMap[userLanguage]?.name}</span>
-                  {showTranslation && <span>→ {languageMap[otherUserLanguage]?.flag} {languageMap[otherUserLanguage]?.name}</span>}
+                  <span className="mr-2">{languageMap[targetLang]?.flag} {languageMap[targetLang]?.name || 'Language'}</span>
+                  {showTranslation && <span>Translation enabled</span>}
                 </div>
               </div>
             </div>
@@ -251,10 +286,15 @@ function ChatInterface() {
               messages.map((message, index) => {
                 const sender = messageSender(message);
                 const mine = sender === role;
+                const messageKey = String(message._id || `${message.createdAt}-${index}`);
+                const translatedText = translatedMap[messageKey];
                 return (
-                  <div key={message._id || `${message.createdAt}-${index}`} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={messageKey} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-3 ${mine ? 'bg-green-100 text-gray-900 rounded-br-none' : 'bg-gray-100 text-gray-900 rounded-bl-none'}`}>
                       <p className="text-sm">{message.text}</p>
+                      {showTranslation && !mine && translatedText && (
+                        <p className="text-xs text-gray-600 mt-1 border-t border-gray-300 pt-1">{translatedText}</p>
+                      )}
                       <div className={`text-xs text-gray-500 mt-1 ${mine ? 'text-right' : 'text-left'}`}>
                         {formatTime(message.createdAt)}
                       </div>

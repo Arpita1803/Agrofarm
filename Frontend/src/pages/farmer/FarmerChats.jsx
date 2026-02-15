@@ -23,6 +23,8 @@ function FarmerChats() {
     };
 
     loadChats();
+    const timer = setInterval(loadChats, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const filteredChats = useMemo(() => {

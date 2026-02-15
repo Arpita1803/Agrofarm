@@ -6,8 +6,6 @@ import Order from "../models/Order.js";
 const isParticipant = (chat, userId) =>
   String(chat.farmerId) === String(userId) || String(chat.dealerId) === String(userId);
 
-const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(String(value || ""));
-
 export const createOrGetChat = async (req, res) => {
   try {
     if (!req.user) {
@@ -20,15 +18,15 @@ export const createOrGetChat = async (req, res) => {
       return res.status(400).json({ message: "otherUserId and either requestId or orderId are required" });
     }
 
-    if (!isValidObjectId(otherUserId)) {
+    if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
       return res.status(400).json({ message: "Invalid otherUserId" });
     }
 
-    if (requestId && !isValidObjectId(requestId)) {
+    if (requestId && !mongoose.Types.ObjectId.isValid(requestId)) {
       return res.status(400).json({ message: "Invalid requestId" });
     }
 
-    if (orderId && !isValidObjectId(orderId)) {
+    if (orderId && !mongoose.Types.ObjectId.isValid(orderId)) {
       return res.status(400).json({ message: "Invalid orderId" });
     }
 
@@ -95,8 +93,8 @@ export const getMyChats = async (req, res) => {
       req.user.role === "farmer"
         ? { farmerId: req.user.id }
         : req.user.role === "dealer"
-        ? { dealerId: req.user.id }
-        : null;
+          ? { dealerId: req.user.id }
+          : null;
 
     if (!query) {
       return res.status(403).json({ message: "Only farmer/dealer chats are supported" });
@@ -114,6 +112,9 @@ export const getMyChats = async (req, res) => {
       const product = chat?.requestId?.product || chat?.orderId?.product || "";
       const productImage = chat?.requestId?.productImage || chat?.orderId?.productImage || "🌾";
 
+      const unreadCount =
+        lastMessage && lastMessage?.senderRole && lastMessage.senderRole !== req.user.role ? 1 : 0;
+
       return {
         _id: chat._id,
         requestId: chat.requestId?._id || null,
@@ -126,7 +127,7 @@ export const getMyChats = async (req, res) => {
         productImage,
         lastMessageText: lastMessage?.text || "",
         lastMessageAt: chat.lastMessageAt || lastMessage?.createdAt || chat.updatedAt,
-        unreadCount: 0,
+        unreadCount,
         messages: chat.messages,
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
