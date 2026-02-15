@@ -87,7 +87,8 @@ export const acceptRequest = async (req, res) => {
       productImage: request.productImage,
       quantity: request.quantity,
       agreedPrice,
-      status: "accepted",
+      status: "placed",
+      statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
     });
 
     request.status = "accepted";

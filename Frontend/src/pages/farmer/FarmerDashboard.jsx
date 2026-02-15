@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { acceptRequest, fetchRequests } from "../../services/requestApi";
+import { fetchRequests } from "../../services/requestApi";
 import { fetchMyOrders } from "../../services/orderApi";
 import { fetchMyChats } from "../../services/chatApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
@@ -98,21 +98,6 @@ function FarmerDashboard() {
     });
   };
 
-  const handleAcceptRequest = async (request) => {
-    try {
-      await acceptRequest(request._id);
-      alert("Request accepted. Order created successfully.");
-
-      setShowRequestDetails(false);
-      setSelectedRequest(null);
-
-      await loadRequests();
-      navigate("/farmer/orders");
-    } catch (error) {
-      alert(error?.response?.data?.message || "Failed to accept request");
-    }
-  };
-
   const formatPrice = (request) => {
     if (request?.minPrice !== undefined && request?.maxPrice !== undefined) {
       return `₹${request.minPrice} - ₹${request.maxPrice}`;
@@ -127,7 +112,15 @@ function FarmerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold mb-4">Available Requests 🌾</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Available Requests 🌾</h1>
+        <button
+          onClick={() => navigate("/farmer/orders")}
+          className="bg-white border px-4 py-2 rounded-lg hover:bg-gray-100"
+        >
+          📦 Orders
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
@@ -190,7 +183,6 @@ function FarmerDashboard() {
             setShowRequestDetails(false);
             setSelectedRequest(null);
           }}
-          onAcceptRequest={handleAcceptRequest}
           onStartChat={() => handleStartChat(selectedRequest)}
         />
       )}

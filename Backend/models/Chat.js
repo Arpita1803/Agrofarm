@@ -21,6 +21,24 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const dealSubmissionSchema = new mongoose.Schema(
+  {
+    submittedByRole: {
+      type: String,
+      enum: ["farmer", "dealer"],
+      required: true,
+    },
+    finalQuantity: { type: Number, required: true },
+    pricePerKg: { type: Number, required: true },
+    deliveryDate: { type: String, required: true },
+    deliveryMode: { type: String, required: true },
+    deliveryCost: { type: Number, default: 0 },
+    meetingPlace: { type: String, default: "" },
+    notes: { type: String, default: "" },
+  },
+  { timestamps: true }
+);
+
 const chatSchema = new mongoose.Schema(
   {
     requestId: {
@@ -42,6 +60,7 @@ const chatSchema = new mongoose.Schema(
       required: true,
     },
     messages: [messageSchema],
+    dealSubmissions: [dealSubmissionSchema],
     lastMessageAt: {
       type: Date,
       default: Date.now,

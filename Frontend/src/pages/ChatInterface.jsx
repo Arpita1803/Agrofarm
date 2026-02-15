@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProceedDealForm from '../components/chat/ProceedDealForm';
-import { createOrGetChat, fetchChatMessages, sendChatMessage } from '../services/chatApi';
+import { createOrGetChat, fetchChatMessages, sendChatMessage, submitChatDeal } from '../services/chatApi';
 
 const languageMap = {
   en: { name: 'English', flag: '🇺🇸' },
@@ -197,9 +197,25 @@ function ChatInterface() {
     }
   };
 
-  const handleDealSubmit = (dealData) => {
-    console.log('Deal submitted:', dealData);
-    setShowProceedDeal(false);
+  const handleDealSubmit = async (dealData) => {
+    if (!chatId) {
+      alert('Chat not initialized yet');
+      return;
+    }
+
+    try {
+      const result = await submitChatDeal(chatId, dealData);
+      setShowProceedDeal(false);
+
+      if (result?.matched && result?.order?._id) {
+        alert('Deal matched. Order placed successfully.');
+        navigate(role === 'dealer' ? '/dealer/orders' : '/farmer/orders');
+      } else {
+        alert(result?.message || 'Deal data is not matching. Please negotiate again.');
+      }
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to submit deal');
+    }
   };
 
   const formatTime = (timestamp) => {

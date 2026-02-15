@@ -31,3 +31,9 @@ export const sendChatMessage = async (chatId, text) => {
   const res = await API.post(`/chats/${chatId}/messages`, { text });
   return res.data;
 };
+
+
+export const submitChatDeal = async (chatId, payload) => {
+  const res = await API.post(`/chats/${chatId}/deal`, payload);
+  return res.data;
+};

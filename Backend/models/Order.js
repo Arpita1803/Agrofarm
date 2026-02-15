@@ -1,5 +1,14 @@
 import mongoose from "mongoose";
 
+const statusHistorySchema = new mongoose.Schema(
+  {
+    status: { type: String, required: true },
+    updatedByRole: { type: String, enum: ["farmer", "dealer"], required: true },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     requestId: {
@@ -46,11 +55,43 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    deliveryDate: {
+      type: String,
+      default: "",
+    },
+    deliveryMode: {
+      type: String,
+      enum: ["farmer_delivery", "dealer_pickup", "third_party", "meet_point"],
+      default: "farmer_delivery",
+    },
+    deliveryCost: {
+      type: Number,
+      default: 0,
+    },
+    meetingPlace: {
+      type: String,
+      default: "",
+    },
+    notes: {
+      type: String,
+      default: "",
+    },
     status: {
       type: String,
-      enum: ["pending", "accepted", "processing", "shipped", "delivered", "cancelled"],
-      default: "accepted",
+      enum: [
+        "placed",
+        "packed",
+        "ready_for_delivery",
+        "shipped",
+        "out_for_delivery",
+        "delivered",
+        "out_for_pickup",
+        "picked",
+        "cancelled",
+      ],
+      default: "placed",
     },
+    statusHistory: [statusHistorySchema],
   },
   { timestamps: true }
 );

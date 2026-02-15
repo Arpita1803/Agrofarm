@@ -83,10 +83,7 @@ function ProceedDealForm({ request, onClose, onSubmit }) {
         submittedAt: new Date().toISOString()
       };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      onSubmit(dealData);
+      await onSubmit(dealData);
     } catch (error) {
       console.error('Error submitting deal:', error);
       setErrors({ submit: 'Failed to submit deal. Please try again.' });
@@ -115,7 +112,7 @@ function ProceedDealForm({ request, onClose, onSubmit }) {
         <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Proceed to Deal</h2>
-            <p className="text-sm text-gray-600 mt-1">Finalize the terms with {request?.dealer}</p>
+            <p className="text-sm text-gray-600 mt-1">Finalize and submit the terms with {request?.dealer}</p>
           </div>
           <button
             onClick={onClose}
@@ -336,7 +333,7 @@ function ProceedDealForm({ request, onClose, onSubmit }) {
                 required
               />
               <label htmlFor="terms" className="text-sm text-gray-700">
-                I agree to supply the product as per agreed quality standards. I understand that the dealer must accept this deal for it to become binding.
+                I agree to the deal details. Order will be placed only when both sides submit matching deal data.
               </label>
             </div>
             
@@ -407,7 +404,7 @@ function ProceedDealForm({ request, onClose, onSubmit }) {
                   Submitting Deal...
                 </div>
               ) : (
-                'Submit Deal to Dealer'
+                'Submit Deal'
               )}
             </button>
           </div>
