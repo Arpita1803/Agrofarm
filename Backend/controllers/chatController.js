@@ -2,9 +2,33 @@ import mongoose from "mongoose";
 import Chat from "../models/Chat.js";
 import Request from "../models/Request.js";
 import Order from "../models/Order.js";
+import User from "../models/User.js";
 
 const isParticipant = (chat, userId) =>
   String(chat.farmerId) === String(userId) || String(chat.dealerId) === String(userId);
+
+const normalizeDeal = (deal) => ({
+  finalQuantity: Number(deal.finalQuantity),
+  pricePerKg: Number(deal.pricePerKg),
+  deliveryDate: String(deal.deliveryDate || "").slice(0, 10),
+  deliveryMode: String(deal.deliveryMode || ""),
+  deliveryCost: Number(deal.deliveryCost || 0),
+  meetingPlace: String(deal.meetingPlace || "").trim().toLowerCase(),
+});
+
+const isDealMatch = (dealA, dealB) => {
+  const a = normalizeDeal(dealA);
+  const b = normalizeDeal(dealB);
+
+  return (
+    a.finalQuantity === b.finalQuantity &&
+    a.pricePerKg === b.pricePerKg &&
+    a.deliveryDate === b.deliveryDate &&
+    a.deliveryMode === b.deliveryMode &&
+    a.deliveryCost === b.deliveryCost &&
+    a.meetingPlace === b.meetingPlace
+  );
+};
 
 export const createOrGetChat = async (req, res) => {
   try {
@@ -73,6 +97,7 @@ export const createOrGetChat = async (req, res) => {
         requestId,
         orderId,
         messages: [],
+        dealSubmissions: [],
         lastMessageAt: new Date(),
       });
     }
@@ -192,6 +217,118 @@ export const sendMessage = async (req, res) => {
 
     const newMessage = chat.messages[chat.messages.length - 1];
     return res.status(201).json(newMessage);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const submitDeal = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const chat = await Chat.findById(req.params.chatId);
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+
+    if (!isParticipant(chat, req.user.id)) {
+      return res.status(403).json({ message: "Not authorized for this chat" });
+    }
+
+    const submittedByRole = req.user.role;
+    if (!["farmer", "dealer"].includes(submittedByRole)) {
+      return res.status(403).json({ message: "Only farmer/dealer can submit deal" });
+    }
+
+    const { finalQuantity, pricePerKg, deliveryDate, deliveryMode, deliveryCost = 0, meetingPlace = "", notes = "" } =
+      req.body || {};
+
+    if (!finalQuantity || !pricePerKg || !deliveryDate || !deliveryMode || !meetingPlace) {
+      return res.status(400).json({ message: "finalQuantity, pricePerKg, deliveryDate, deliveryMode, meetingPlace are required" });
+    }
+
+    const payload = {
+      submittedByRole,
+      finalQuantity: Number(finalQuantity),
+      pricePerKg: Number(pricePerKg),
+      deliveryDate: String(deliveryDate).slice(0, 10),
+      deliveryMode,
+      deliveryCost: Number(deliveryCost || 0),
+      meetingPlace: String(meetingPlace).trim(),
+      notes: String(notes || "").trim(),
+    };
+
+    chat.dealSubmissions = (chat.dealSubmissions || []).filter((item) => item.submittedByRole !== submittedByRole);
+    chat.dealSubmissions.push(payload);
+    await chat.save();
+
+    const farmerDeal = chat.dealSubmissions.find((item) => item.submittedByRole === "farmer");
+    const dealerDeal = chat.dealSubmissions.find((item) => item.submittedByRole === "dealer");
+
+    if (!farmerDeal || !dealerDeal) {
+      return res.json({
+        matched: false,
+        message: "Deal submitted. Waiting for the other side to submit.",
+      });
+    }
+
+    if (!isDealMatch(farmerDeal, dealerDeal)) {
+      return res.json({
+        matched: false,
+        message: "Deal data is not matching. Please negotiate again in chat.",
+      });
+    }
+
+    const existingOrder = await Order.findOne({
+      requestId: chat.requestId,
+      dealerId: chat.dealerId,
+      farmerId: chat.farmerId,
+      status: { $ne: "cancelled" },
+    });
+
+    if (existingOrder) {
+      return res.json({ matched: true, message: "Order already placed", order: existingOrder });
+    }
+
+    const request = await Request.findById(chat.requestId);
+    if (!request) {
+      return res.status(404).json({ message: "Request not found for this chat" });
+    }
+
+    const farmer = await User.findById(chat.farmerId).select("name");
+
+    const order = await Order.create({
+      requestId: request._id,
+      dealerId: chat.dealerId,
+      dealerName: request.dealerName || "Dealer",
+      farmerId: chat.farmerId,
+      farmerName: farmer?.name || "Farmer",
+      product: request.product,
+      productImage: request.productImage || "🌾",
+      quantity: payload.finalQuantity,
+      agreedPrice: payload.pricePerKg,
+      deliveryDate: payload.deliveryDate,
+      deliveryMode: payload.deliveryMode,
+      deliveryCost: payload.deliveryCost,
+      meetingPlace: payload.meetingPlace,
+      notes: payload.notes,
+      status: "placed",
+      statusHistory: [{ status: "placed", updatedByRole: submittedByRole, updatedAt: new Date() }],
+    });
+
+    request.status = "accepted";
+    await request.save();
+
+    chat.orderId = order._id;
+    await chat.save();
+
+    return res.json({
+      matched: true,
+      message: "Deal matched and order placed successfully.",
+      order,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

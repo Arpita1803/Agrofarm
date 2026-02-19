@@ -5,49 +5,49 @@ import { fetchMyOrders, updateOrderStatus } from '../../services/orderApi';
 
 const statusFilterDefs = [
   { id: 'all', label: 'All Orders' },
-  { id: 'pending', label: 'Pending' },
-  { id: 'accepted', label: 'Accepted' },
-  { id: 'processing', label: 'Processing' },
+  { id: 'placed', label: 'Placed' },
+  { id: 'packed', label: 'Packed' },
+  { id: 'ready_for_delivery', label: 'Ready for Delivery' },
   { id: 'shipped', label: 'Shipped' },
-
-
-
+  { id: 'out_for_delivery', label: 'Out for Delivery' },
+  { id: 'out_for_pickup', label: 'Out for Pickup' },
+  { id: 'picked', label: 'Picked' },
   { id: 'delivered', label: 'Delivered' },
   { id: 'cancelled', label: 'Cancelled' }
 ];
 
 const statusProgressMap = {
-  pending: 20,
-  accepted: 35,
-  processing: 60,
-  shipped: 85,
-
-
-
+  placed: 10,
+  packed: 25,
+  ready_for_delivery: 45,
+  shipped: 60,
+  out_for_delivery: 80,
+  out_for_pickup: 70,
+  picked: 85,
   delivered: 100,
   cancelled: 0,
 };
 
 const statusColors = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  accepted: 'bg-blue-100 text-blue-800',
-  processing: 'bg-purple-100 text-purple-800',
+  placed: 'bg-yellow-100 text-yellow-800',
+  packed: 'bg-orange-100 text-orange-800',
+  ready_for_delivery: 'bg-blue-100 text-blue-800',
   shipped: 'bg-indigo-100 text-indigo-800',
-
-
-
+  out_for_delivery: 'bg-cyan-100 text-cyan-800',
+  out_for_pickup: 'bg-purple-100 text-purple-800',
+  picked: 'bg-violet-100 text-violet-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800'
 };
 
 const statusLabels = {
-  pending: 'Pending',
-  accepted: 'Accepted',
-  processing: 'Processing',
+  placed: 'Placed',
+  packed: 'Packed',
+  ready_for_delivery: 'Ready for Delivery',
   shipped: 'Shipped',
-
-
-
+  out_for_delivery: 'Out for Delivery',
+  out_for_pickup: 'Out for Pickup',
+  picked: 'Picked',
   delivered: 'Delivered',
   cancelled: 'Cancelled'
 };
@@ -66,7 +66,7 @@ function FarmerOrders() {
     const deliveryCost = Number(order.deliveryCost ?? 0);
     const totalAmount = Number(order.totalAmount ?? pricePerKg * quantity);
     const grandTotal = Number(order.grandTotal ?? totalAmount + deliveryCost);
-    const status = order.status || 'pending';
+    const status = order.status || 'placed';
 
     return {
       id: order._id || order.id,
@@ -122,7 +122,7 @@ function FarmerOrders() {
   // Statistics
   const stats = {
     totalOrders: orders.length,
-    activeOrders: orders.filter(o => ['pending', 'accepted', 'processing', 'shipped'].includes(o.status)).length,
+    activeOrders: orders.filter(o => ['placed', 'packed', 'ready_for_delivery', 'shipped', 'out_for_delivery', 'out_for_pickup', 'picked'].includes(o.status)).length,
     totalEarnings: orders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.grandTotal, 0),
     pendingPayment: orders.filter(o => o.paymentStatus === 'pending').reduce((sum, o) => sum + o.grandTotal, 0)
   };
@@ -191,29 +191,29 @@ function FarmerOrders() {
   };
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+  const handleUpdateStatusFromDetails = async (status) => {
+    if (!selectedOrder) return;
+    try {
+      await updateOrderStatus(selectedOrder.id, status);
+      applyLocalStatus(selectedOrder.id, status);
+      alert(`Order status updated to ${status}.`);
+      setShowOrderDetails(false);
+      setSelectedOrder(null);
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to update order status');
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch(status) {
-      case 'pending': return '⏳';
-      case 'accepted': return '✅';
-      case 'processing': return '🔄';
+      case 'placed': return '🧾';
+      case 'packed': return '📦';
+      case 'ready_for_delivery': return '✅';
       case 'shipped': return '🚚';
-      case 'delivered': return '📦';
-
-
-
+      case 'out_for_delivery': return '🛵';
+      case 'out_for_pickup': return '🏬';
+      case 'picked': return '📥';
+      case 'delivered': return '📬';
       case 'cancelled': return '❌';
       default: return '📝';
     }
@@ -449,7 +449,7 @@ function FarmerOrders() {
                   >
                     Chat
                   </button>
-                  {['pending', 'accepted'].includes(order.status) && (
+                  {['placed', 'packed'].includes(order.status) && (
                     <button
                       onClick={() => handleCancelOrder(order)}
                       className="flex-1 px-2 py-1.5 bg-red-50 text-red-700 rounded text-xs hover:bg-red-100 transition duration-300"
@@ -478,7 +478,7 @@ function FarmerOrders() {
         <OrderDetails
           order={selectedOrder}
           userRole="farmer"
-
+          onUpdateStatus={handleUpdateStatusFromDetails}
           onClose={() => {
             setShowOrderDetails(false);
             setSelectedOrder(null);
