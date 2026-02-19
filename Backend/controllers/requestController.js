@@ -70,6 +70,12 @@ export const acceptRequest = async (req, res) => {
       return res.status(404).json({ message: "Farmer not found" });
     }
 
+    const hasAgreedPrice = req.body?.agreedPrice !== undefined;
+    const parsedAgreedPrice = Number(req.body?.agreedPrice);
+    if (hasAgreedPrice && (!Number.isFinite(parsedAgreedPrice) || parsedAgreedPrice < 0)) {
+      return res.status(400).json({ message: "agreedPrice must be a valid non-negative number" });
+    }
+
     const claimedRequest = await Request.findOneAndUpdate(
       { _id: id, status: "open" },
       { $set: { status: "accepted" } },
@@ -80,12 +86,11 @@ export const acceptRequest = async (req, res) => {
       return res.status(409).json({ message: "Request is not open for acceptance" });
     }
 
-    const agreedPrice = Number(req.body?.agreedPrice ?? claimedRequest.maxPrice);
-    if (!Number.isFinite(agreedPrice) || agreedPrice < 0) {
-      return res.status(400).json({ message: "agreedPrice must be a valid non-negative number" });
-    }
+    const agreedPrice = hasAgreedPrice ? parsedAgreedPrice : Number(claimedRequest.maxPrice);
 
-    const order = await Order.create({
+    let order;
+    try {
+      order = await Order.create({
       requestId: claimedRequest._id,
       dealerId: claimedRequest.dealerId,
       dealerName: claimedRequest.dealerName,
@@ -97,7 +102,11 @@ export const acceptRequest = async (req, res) => {
       agreedPrice,
       status: "placed",
       statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
-    });
+      });
+    } catch (createError) {
+      await Request.updateOne({ _id: claimedRequest._id, status: "accepted" }, { $set: { status: "open" } });
+      throw createError;
+    }
 
     return res.status(201).json({
       message: "Request accepted and order created",
