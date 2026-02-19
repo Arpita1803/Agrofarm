@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import Order from "../models/Order.js";
+import { FARMER_CANCELLABLE_STATUSES, ORDER_STATUSES } from "../constants/orderStatus.js";
 
 export const getMyOrders = async (req, res) => {
   try {
@@ -32,8 +34,11 @@ export const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ["pending", "accepted", "processing", "shipped", "delivered", "cancelled"];
-    if (!allowedStatuses.includes(status)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid order id" });
+    }
+
+    if (!ORDER_STATUSES.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
@@ -49,16 +54,25 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this order" });
     }
 
+    if (status === order.status) {
+      return res.status(400).json({ message: "Order is already in this status" });
+    }
+
     if (isFarmer) {
       if (status !== "cancelled") {
         return res.status(403).json({ message: "Farmer can only cancel orders" });
       }
-      if (!["pending", "accepted"].includes(order.status)) {
+      if (!FARMER_CANCELLABLE_STATUSES.includes(order.status)) {
         return res.status(400).json({ message: "Order can no longer be cancelled" });
       }
     }
 
     order.status = status;
+    order.statusHistory.push({
+      status,
+      updatedByRole: req.user.role,
+      updatedAt: new Date(),
+    });
     await order.save();
 
     return res.json({ message: "Order status updated", order });

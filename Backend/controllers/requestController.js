@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Request from "../models/Request.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
@@ -60,14 +61,8 @@ export const acceptRequest = async (req, res) => {
     }
 
     const { id } = req.params;
-    const request = await Request.findById(id);
-
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
-    }
-
-    if (request.status !== "open") {
-      return res.status(400).json({ message: "Request is not open for acceptance" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid request id" });
     }
 
     const farmer = await User.findById(req.user.id).select("name");
@@ -75,24 +70,34 @@ export const acceptRequest = async (req, res) => {
       return res.status(404).json({ message: "Farmer not found" });
     }
 
-    const agreedPrice = Number(req.body?.agreedPrice ?? request.maxPrice);
+    const claimedRequest = await Request.findOneAndUpdate(
+      { _id: id, status: "open" },
+      { $set: { status: "accepted" } },
+      { new: true }
+    );
+
+    if (!claimedRequest) {
+      return res.status(409).json({ message: "Request is not open for acceptance" });
+    }
+
+    const agreedPrice = Number(req.body?.agreedPrice ?? claimedRequest.maxPrice);
+    if (!Number.isFinite(agreedPrice) || agreedPrice < 0) {
+      return res.status(400).json({ message: "agreedPrice must be a valid non-negative number" });
+    }
 
     const order = await Order.create({
-      requestId: request._id,
-      dealerId: request.dealerId,
-      dealerName: request.dealerName,
+      requestId: claimedRequest._id,
+      dealerId: claimedRequest.dealerId,
+      dealerName: claimedRequest.dealerName,
       farmerId: req.user.id,
       farmerName: farmer.name,
-      product: request.product,
-      productImage: request.productImage,
-      quantity: request.quantity,
+      product: claimedRequest.product,
+      productImage: claimedRequest.productImage,
+      quantity: claimedRequest.quantity,
       agreedPrice,
       status: "placed",
       statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
     });
-
-    request.status = "accepted";
-    await request.save();
 
     return res.status(201).json({
       message: "Request accepted and order created",
