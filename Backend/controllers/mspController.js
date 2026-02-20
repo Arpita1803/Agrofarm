@@ -1,4 +1,18 @@
 import Msp from "../models/Msp.js";
+import { ADMIN_SYSTEM_USER_ID, MSP_ALLOWED_PRODUCTS, MSP_CATALOG_2025_26 } from "../constants/mspCatalog.js";
+
+const ensureDefaultMsp = async () => {
+  const count = await Msp.countDocuments();
+  if (count > 0) return;
+
+  await Msp.insertMany(
+    MSP_CATALOG_2025_26.map((item) => ({
+      product: item.product,
+      price: item.price,
+      updatedBy: ADMIN_SYSTEM_USER_ID,
+    }))
+  );
+};
 
 export const upsertMsp = async (req, res) => {
   try {
@@ -14,8 +28,8 @@ export const upsertMsp = async (req, res) => {
     const normalizedProduct = String(product).trim().toLowerCase();
     const numericPrice = Number(price);
 
-    if (!normalizedProduct) {
-      return res.status(400).json({ message: "product is required" });
+    if (!MSP_ALLOWED_PRODUCTS.has(normalizedProduct)) {
+      return res.status(400).json({ message: "product is not part of the current MSP crop list" });
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
@@ -36,6 +50,7 @@ export const upsertMsp = async (req, res) => {
 
 export const getAllMsp = async (_req, res) => {
   try {
+    await ensureDefaultMsp();
     const mspList = await Msp.find().sort({ product: 1 });
     return res.json(mspList);
   } catch (error) {
@@ -61,4 +76,8 @@ export const getMspByProduct = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
+};
+
+export const getMspCatalog = async (_req, res) => {
+  return res.json(MSP_CATALOG_2025_26);
 };

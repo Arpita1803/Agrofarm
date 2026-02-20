@@ -71,7 +71,7 @@ function LoginPage() {
         } else if (res.role === 'dealer') {
           navigate('/dealer/dashboard');
         } else if (res.role === 'admin') {
-          navigate('/admin/msp');
+          navigate('/admin/dashboard');
         } else {
           navigate('/');
         }

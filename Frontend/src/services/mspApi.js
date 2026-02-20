@@ -27,3 +27,8 @@ export const upsertMsp = async (payload) => {
   const res = await API.post("/msp", payload);
   return res.data;
 };
+
+export const fetchMspCatalog = async () => {
+  const res = await API.get("/msp/catalog/all");
+  return res.data;
+};

@@ -3,6 +3,7 @@ import Request from "../models/Request.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Msp from "../models/Msp.js";
+import { MSP_ALLOWED_PRODUCTS } from "../constants/mspCatalog.js";
 
 // Dealer creates request
 export const createRequest = async (req, res) => {
@@ -35,13 +36,15 @@ export const createRequest = async (req, res) => {
       return res.status(400).json({ message: "minPrice cannot be greater than maxPrice" });
     }
 
-    const msp = await Msp.findOne({ product: normalizedProduct }).select("price");
-    if (!msp) {
-      return res.status(400).json({ message: "MSP not set for this product. Contact admin." });
-    }
+    if (MSP_ALLOWED_PRODUCTS.has(normalizedProduct)) {
+      const msp = await Msp.findOne({ product: normalizedProduct }).select("price");
+      if (!msp) {
+        return res.status(400).json({ message: "MSP not set for this product. Contact admin." });
+      }
 
-    if (numericMinPrice <= Number(msp.price)) {
-      return res.status(400).json({ message: `minPrice must be greater than MSP (₹${msp.price})` });
+      if (numericMinPrice <= Number(msp.price)) {
+        return res.status(400).json({ message: `minPrice must be greater than MSP (₹${msp.price})` });
+      }
     }
 
     const request = await Request.create({
