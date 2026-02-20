@@ -91,22 +91,25 @@ function DealerOrders() {
       lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
       farmerId: order.farmerId,
       dealerId: order.dealerId,
+      statusHistory: order.statusHistory || [],
     };
   };
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const data = await fetchMyOrders();
-        const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
-        setOrders(normalized);
-      } catch (error) {
-        console.error('Failed to fetch dealer orders', error);
-        setOrders([]);
-      }
-    };
+  const loadOrders = async () => {
+    try {
+      const data = await fetchMyOrders();
+      const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
+      setOrders(normalized);
+    } catch (error) {
+      console.error('Failed to fetch dealer orders', error);
+      setOrders([]);
+    }
+  };
 
+  useEffect(() => {
     loadOrders();
+    const intervalId = setInterval(loadOrders, 10000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Filter orders
@@ -128,7 +131,7 @@ function DealerOrders() {
     pendingOrders: orders.filter(o => o.status === 'placed').length
   };
 
-  const applyLocalStatus = (orderId, status) => {
+  const applyLocalStatus = (orderId, status, statusHistory) => {
     setOrders((prev) =>
       prev.map((o) =>
         o.id === orderId
@@ -137,6 +140,7 @@ function DealerOrders() {
               status,
               progress: statusProgressMap[status] ?? o.progress,
               lastUpdated: new Date().toISOString(),
+              statusHistory: statusHistory ?? o.statusHistory,
             }
           : o
       )
@@ -149,6 +153,7 @@ function DealerOrders() {
         status,
         progress: statusProgressMap[status] ?? prev.progress,
         lastUpdated: new Date().toISOString(),
+        statusHistory: statusHistory ?? prev.statusHistory,
       };
     });
   };
@@ -184,8 +189,9 @@ const handleRejectOrder = async (order) => {
     if (!window.confirm(`Reject order ${order.id}?`)) return;
 
     try {
-      await updateOrderStatus(order.id, 'cancelled');
-      applyLocalStatus(order.id, 'cancelled');
+      const response = await updateOrderStatus(order.id, 'cancelled');
+      applyLocalStatus(order.id, 'cancelled', response?.order?.statusHistory);
+      await loadOrders();
       alert(`Order ${order.id} rejected.`);
     } catch (error) {
       alert(error?.response?.data?.message || 'Failed to reject order');
@@ -196,8 +202,9 @@ const handleRejectOrder = async (order) => {
   const handleUpdateStatusFromDetails = async (status) => {
     if (!selectedOrder) return;
     try {
-      await updateOrderStatus(selectedOrder.id, status);
-      applyLocalStatus(selectedOrder.id, status);
+      const response = await updateOrderStatus(selectedOrder.id, status);
+      applyLocalStatus(selectedOrder.id, status, response?.order?.statusHistory);
+      await loadOrders();
       alert(`Order status updated to ${status}.`);
       setShowOrderDetails(false);
       setSelectedOrder(null);

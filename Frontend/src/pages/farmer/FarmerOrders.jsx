@@ -90,22 +90,25 @@ function FarmerOrders() {
       lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
       farmerId: order.farmerId,
       dealerId: order.dealerId,
+      statusHistory: order.statusHistory || [],
     };
   };
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const data = await fetchMyOrders();
-        const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
-        setOrders(normalized);
-      } catch (error) {
-        console.error('Failed to fetch farmer orders', error);
-        setOrders([]);
-      }
-    };
+  const loadOrders = async () => {
+    try {
+      const data = await fetchMyOrders();
+      const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
+      setOrders(normalized);
+    } catch (error) {
+      console.error('Failed to fetch farmer orders', error);
+      setOrders([]);
+    }
+  };
 
+  useEffect(() => {
     loadOrders();
+    const intervalId = setInterval(loadOrders, 10000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Filter orders
@@ -127,7 +130,7 @@ function FarmerOrders() {
     pendingPayment: orders.filter(o => o.paymentStatus === 'pending').reduce((sum, o) => sum + o.grandTotal, 0)
   };
 
-  const applyLocalStatus = (orderId, status) => {
+  const applyLocalStatus = (orderId, status, statusHistory) => {
     setOrders((prev) =>
       prev.map((o) =>
         o.id === orderId
@@ -136,6 +139,7 @@ function FarmerOrders() {
               status,
               progress: statusProgressMap[status] ?? o.progress,
               lastUpdated: new Date().toISOString(),
+              statusHistory: statusHistory ?? o.statusHistory,
             }
           : o
       )
@@ -148,6 +152,7 @@ function FarmerOrders() {
         status,
         progress: statusProgressMap[status] ?? prev.progress,
         lastUpdated: new Date().toISOString(),
+        statusHistory: statusHistory ?? prev.statusHistory,
       };
     });
   };
@@ -182,8 +187,9 @@ function FarmerOrders() {
     if (!window.confirm(`Are you sure you want to cancel order ${order.id}?`)) return;
 
     try {
-      await updateOrderStatus(order.id, 'cancelled');
-      applyLocalStatus(order.id, 'cancelled');
+      const response = await updateOrderStatus(order.id, 'cancelled');
+      applyLocalStatus(order.id, 'cancelled', response?.order?.statusHistory);
+      await loadOrders();
       alert(`Order ${order.id} cancellation requested.`);
     } catch (error) {
       alert(error?.response?.data?.message || 'Failed to cancel order');
@@ -194,8 +200,9 @@ function FarmerOrders() {
   const handleUpdateStatusFromDetails = async (status) => {
     if (!selectedOrder) return;
     try {
-      await updateOrderStatus(selectedOrder.id, status);
-      applyLocalStatus(selectedOrder.id, status);
+      const response = await updateOrderStatus(selectedOrder.id, status);
+      applyLocalStatus(selectedOrder.id, status, response?.order?.statusHistory);
+      await loadOrders();
       alert(`Order status updated to ${status}.`);
       setShowOrderDetails(false);
       setSelectedOrder(null);

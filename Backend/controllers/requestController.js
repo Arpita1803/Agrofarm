@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import Request from "../models/Request.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
+import Msp from "../models/Msp.js";
 
 // Dealer creates request
 export const createRequest = async (req, res) => {
@@ -21,12 +23,33 @@ export const createRequest = async (req, res) => {
       return res.status(404).json({ message: "Dealer not found" });
     }
 
+    const normalizedProduct = String(product).trim().toLowerCase();
+    const numericMinPrice = Number(minPrice);
+    const numericMaxPrice = Number(maxPrice);
+
+    if (!Number.isFinite(numericMinPrice) || !Number.isFinite(numericMaxPrice) || numericMinPrice < 0 || numericMaxPrice < 0) {
+      return res.status(400).json({ message: "minPrice and maxPrice must be valid non-negative numbers" });
+    }
+
+    if (numericMinPrice > numericMaxPrice) {
+      return res.status(400).json({ message: "minPrice cannot be greater than maxPrice" });
+    }
+
+    const msp = await Msp.findOne({ product: normalizedProduct }).select("price");
+    if (!msp) {
+      return res.status(400).json({ message: "MSP not set for this product. Contact admin." });
+    }
+
+    if (numericMinPrice <= Number(msp.price)) {
+      return res.status(400).json({ message: `minPrice must be greater than MSP (₹${msp.price})` });
+    }
+
     const request = await Request.create({
       product,
       productImage,
       quantity: Number(quantity),
-      minPrice: Number(minPrice),
-      maxPrice: Number(maxPrice),
+      minPrice: numericMinPrice,
+      maxPrice: numericMaxPrice,
       location,
       description,
       requiredDate,
@@ -60,14 +83,8 @@ export const acceptRequest = async (req, res) => {
     }
 
     const { id } = req.params;
-    const request = await Request.findById(id);
-
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
-    }
-
-    if (request.status !== "open") {
-      return res.status(400).json({ message: "Request is not open for acceptance" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid request id" });
     }
 
     const farmer = await User.findById(req.user.id).select("name");
@@ -75,24 +92,50 @@ export const acceptRequest = async (req, res) => {
       return res.status(404).json({ message: "Farmer not found" });
     }
 
-    const agreedPrice = Number(req.body?.agreedPrice ?? request.maxPrice);
+    const hasAgreedPrice = req.body?.agreedPrice !== undefined;
+    const parsedAgreedPrice = Number(req.body?.agreedPrice);
+    if (hasAgreedPrice && (!Number.isFinite(parsedAgreedPrice) || parsedAgreedPrice < 0)) {
+      return res.status(400).json({ message: "agreedPrice must be a valid non-negative number" });
+    }
 
-    const order = await Order.create({
-      requestId: request._id,
-      dealerId: request.dealerId,
-      dealerName: request.dealerName,
-      farmerId: req.user.id,
-      farmerName: farmer.name,
-      product: request.product,
-      productImage: request.productImage,
-      quantity: request.quantity,
-      agreedPrice,
-      status: "placed",
-      statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
-    });
+    const claimedRequest = await Request.findOneAndUpdate(
+      { _id: id, status: "open" },
+      { $set: { status: "accepted" } },
+      { new: true }
+    );
 
-    request.status = "accepted";
-    await request.save();
+    if (!claimedRequest) {
+      return res.status(409).json({ message: "Request is not open for acceptance" });
+    }
+
+    const agreedPrice = hasAgreedPrice ? parsedAgreedPrice : Number(claimedRequest.maxPrice);
+    if (!Number.isFinite(agreedPrice) || agreedPrice < 0) {
+      await Request.updateOne({ _id: claimedRequest._id, status: "accepted" }, { $set: { status: "open" } });
+      return res.status(400).json({ message: "agreedPrice must be a valid non-negative number" });
+    }
+
+    let order;
+    try {
+      order = await Order.create({
+        requestId: claimedRequest._id,
+        dealerId: claimedRequest.dealerId,
+        dealerName: claimedRequest.dealerName,
+        farmerId: req.user.id,
+        farmerName: farmer.name,
+        product: claimedRequest.product,
+        productImage: claimedRequest.productImage,
+        quantity: claimedRequest.quantity,
+        agreedPrice,
+        status: "placed",
+        statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
+      });
+    } catch (createError) {
+      const existingOrder = await Order.findOne({ requestId: claimedRequest._id }).select("_id");
+      if (!existingOrder) {
+        await Request.updateOne({ _id: claimedRequest._id, status: "accepted" }, { $set: { status: "open" } });
+      }
+      throw createError;
+    }
 
     return res.status(201).json({
       message: "Request accepted and order created",

@@ -8,6 +8,7 @@ import requestRoutes from "./routes/requestRoutes.js";
 import adRoutes from "./routes/adRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import mspRoutes from "./routes/mspRoutes.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use("/api/requests", requestRoutes);
 app.use("/api/ads", adRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/msp", mspRoutes);
 
 // Database connection
 mongoose
@@ -36,6 +38,5 @@ mongoose
   .catch((err) => {
     console.error("MongoDB connection error:", err);
   });
-
 
 
