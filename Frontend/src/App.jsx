@@ -19,6 +19,7 @@ import FarmerChats from './pages/farmer/FarmerChats'
 import ChatInterface from './pages/ChatInterface'
 import DealerPriceRecommendation from './components/dealer/DealerPriceRecommendation'
 import AdminMspPage from './pages/admin/AdminMspPage'
+import AdminDashboard from './pages/admin/AdminDashboard'
 
 import './App.css'
 
@@ -42,6 +43,7 @@ function App() {
         <Route path="/farmer/products" element={<FarmerProducts />} />
         <Route path="/farmer/chats" element={<FarmerChats />} />
 
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/msp" element={<AdminMspPage />} />
 
         <Route path="/chat/:chatId" element={<ChatInterface />} />
