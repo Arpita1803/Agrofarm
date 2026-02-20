@@ -1,6 +1,9 @@
 import React from "react";
+import React, { useState } from "react";
 
-function RequestDetails({ request, onClose, onStartChat }) {
+function RequestDetails({ request, onClose, onStartChat, onAcceptRequest }) {
+  const [isAccepting, setIsAccepting] = useState(false);
+
   const formatDate = (dateString) => {
     if (!dateString) return "Not specified";
     return new Date(dateString).toLocaleDateString("en-IN", {
@@ -12,6 +15,16 @@ function RequestDetails({ request, onClose, onStartChat }) {
   };
 
   const postedDate = request.createdAt || request.timestamp;
+
+  const handleAccept = async () => {
+    if (!onAcceptRequest || !request?._id) return;
+    try {
+      setIsAccepting(true);
+      await onAcceptRequest(request);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -95,6 +108,14 @@ function RequestDetails({ request, onClose, onStartChat }) {
               className="flex-1 border border-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-50 transition duration-300"
             >
               Close
+            </button>
+
+            <button
+              onClick={handleAccept}
+              disabled={isAccepting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-300 disabled:opacity-60"
+            >
+              {isAccepting ? "Accepting..." : "Accept Request"}
             </button>
 
             <button

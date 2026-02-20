@@ -58,6 +58,7 @@ export const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     const allowedStatuses = Object.keys(statusTransitions);
+    const allowedStatuses = ["pending", "accepted", "processing", "shipped", "delivered", "cancelled"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -96,6 +97,16 @@ export const updateOrderStatus = async (req, res) => {
     order.statusHistory = order.statusHistory || [];
     order.statusHistory.push({ status, updatedByRole: req.user.role, updatedAt: new Date() });
 
+    if (isFarmer) {
+      if (status !== "cancelled") {
+        return res.status(403).json({ message: "Farmer can only cancel orders" });
+      }
+      if (!["pending", "accepted"].includes(order.status)) {
+        return res.status(400).json({ message: "Order can no longer be cancelled" });
+      }
+    }
+
+    order.status = status;
     await order.save();
 
     return res.json({ message: "Order status updated", order });

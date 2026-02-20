@@ -9,6 +9,7 @@ CORS(app)
 
 def load_dataset():
     raw_df = pd.read_csv("price_dataset.csv", sep="	", encoding="utf-8")
+    raw_df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
 
     # Normalize incoming headers (handles casing/extra spaces/BOM)
     normalized = {str(col): str(col).strip().lower() for col in raw_df.columns}

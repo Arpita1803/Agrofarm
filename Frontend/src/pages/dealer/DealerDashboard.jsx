@@ -303,17 +303,7 @@ function DealerDashboard() {
             {/* DROPDOWN MENU */}
             {showMenu && (
               <div className="absolute right-0 top-12 bg-white border rounded-xl shadow-lg w-40 z-50">
-                <button
-                  title="View Profile"
-                  onClick={() => {
-                    setShowMenu(false);
-                    navigate('/dealer/profile');
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  👤 Profile
-                </button>
-
+                
                 <button
                   title="Logout"
                   onClick={() => {
@@ -410,3 +400,8 @@ function DealerDashboard() {
 }
 
 export default DealerDashboard;
+
+
+
+
+ 

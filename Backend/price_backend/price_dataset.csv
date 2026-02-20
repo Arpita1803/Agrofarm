@@ -1,4 +1,4 @@
-crop_type	state	city	season	month	year	Modal_price
+crop	state	District	season	month	year	Modal_price
 Wheat	Maharashtra	Mumbai	Kharif	1	2023	14.33
 Wheat	Maharashtra	Mumbai	Kharif	2	2023	41.34
 Wheat	Maharashtra	Mumbai	Kharif	3	2023	29.03

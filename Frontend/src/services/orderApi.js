@@ -31,3 +31,4 @@ export const updateOrderStatus = async (orderId, status) => {
     throw error;
   }
 };
+};
