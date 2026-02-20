@@ -41,6 +41,26 @@ function FarmerChats() {
     });
   }, [chats, searchQuery]);
 
+
+    loadChats();
+    const timer = setInterval(loadChats, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const filteredChats = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return chats;
+
+    return chats.filter((chat) => {
+      const lastMessage = chat?.lastMessageText || chat?.messages?.[chat.messages.length - 1]?.text || '';
+      return (
+        String(chat?.dealerName || 'Dealer').toLowerCase().includes(q) ||
+        String(chat?.product || '').toLowerCase().includes(q) ||
+        String(lastMessage).toLowerCase().includes(q)
+      );
+    });
+  }, [chats, searchQuery]);
+
   const formatTime = (value) => {
     if (!value) return '';
     const date = new Date(value);

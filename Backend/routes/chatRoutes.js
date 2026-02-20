@@ -17,3 +17,4 @@ router.post("/:chatId/messages", authMiddleware, sendMessage);
 router.post("/:chatId/deal", authMiddleware, submitDeal);
 
 export default router;
+export default router;

@@ -1,5 +1,30 @@
 import Order from "../models/Order.js";
 
+const statusTransitions = {
+  placed: ["packed", "cancelled"],
+  packed: ["ready_for_delivery", "out_for_pickup", "cancelled"],
+  ready_for_delivery: ["shipped", "out_for_delivery", "cancelled"],
+  shipped: ["out_for_delivery", "delivered"],
+  out_for_delivery: ["delivered"],
+  out_for_pickup: ["picked", "cancelled"],
+  picked: ["delivered"],
+  delivered: [],
+  cancelled: [],
+};
+
+const farmerManagedStatuses = [
+  "packed",
+  "ready_for_delivery",
+  "shipped",
+  "out_for_delivery",
+  "out_for_pickup",
+  "picked",
+  "delivered",
+  "cancelled",
+];
+
+const dealerManagedStatuses = ["cancelled", "delivered"];
+
 export const getMyOrders = async (req, res) => {
   try {
     if (!req.user) {
@@ -32,6 +57,7 @@ export const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    const allowedStatuses = Object.keys(statusTransitions);
     const allowedStatuses = ["pending", "accepted", "processing", "shipped", "delivered", "cancelled"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
@@ -48,6 +74,28 @@ export const updateOrderStatus = async (req, res) => {
     if (!isDealer && !isFarmer) {
       return res.status(403).json({ message: "Not authorized for this order" });
     }
+
+    const allowedByRole = isFarmer ? farmerManagedStatuses : dealerManagedStatuses;
+    if (!allowedByRole.includes(status)) {
+      return res.status(403).json({ message: "You cannot set this status" });
+    }
+
+    if (order.deliveryMode === "farmer_delivery" && ["out_for_pickup", "picked"].includes(status)) {
+      return res.status(400).json({ message: "Pickup statuses are not valid for farmer delivery" });
+    }
+
+    if (order.deliveryMode === "dealer_pickup" && ["ready_for_delivery", "shipped", "out_for_delivery"].includes(status)) {
+      return res.status(400).json({ message: "Delivery statuses are not valid for dealer pickup" });
+    }
+
+    const possibleNextStatuses = statusTransitions[order.status] || [];
+    if (!possibleNextStatuses.includes(status)) {
+      return res.status(400).json({ message: `Invalid transition from ${order.status} to ${status}` });
+    }
+
+    order.status = status;
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({ status, updatedByRole: req.user.role, updatedAt: new Date() });
 
     if (isFarmer) {
       if (status !== "cancelled") {

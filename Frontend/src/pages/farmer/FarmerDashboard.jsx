@@ -43,6 +43,7 @@ function FarmerDashboard() {
       setRequests(list);
       setStats((prev) => ({
         ...prev,
+        openRequests: list.filter((req) => (req?.status || "open") === "open").length,
         openRequests: list.filter(
           (req) => (req?.status || "open") === "open"
         ).length,
@@ -65,6 +66,10 @@ function FarmerDashboard() {
       await loadRequests();
 
       try {
+        const [orders, chats] = await Promise.all([fetchMyOrders(), fetchMyChats()]);
+        const activeOrders = Array.isArray(orders)
+          ? orders.filter((o) => !["delivered", "cancelled"].includes(o?.status)).length
+          : 0;
         const [orders, chats] = await Promise.all([
           fetchMyOrders(),
           fetchMyChats(),
@@ -121,6 +126,16 @@ function FarmerDashboard() {
     });
   };
 
+  const formatPrice = (request) => {
+    if (request?.minPrice !== undefined && request?.maxPrice !== undefined) {
+      return `₹${request.minPrice} - ₹${request.maxPrice}`;
+    }
+
+    if (request?.priceExpected !== undefined && request?.priceExpected !== null) {
+      return `${request.priceExpected}`;
+    }
+
+    return "Not specified";
   const handleLogout = () => {
     localStorage.clear();
     navigate("/login");
@@ -138,6 +153,28 @@ function FarmerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Available Requests 🌾</h1>
+        <button
+          onClick={() => navigate("/farmer/orders")}
+          className="bg-white border px-4 py-2 rounded-lg hover:bg-gray-100"
+        >
+          📦 Orders
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div className="bg-white p-4 rounded-xl border shadow-sm">
+          <p className="text-sm text-gray-600">Open Requests</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.openRequests}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border shadow-sm">
+          <p className="text-sm text-gray-600">My Active Orders</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.activeOrders}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border shadow-sm">
+          <p className="text-sm text-gray-600">My Chats</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.chats}</p>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
@@ -211,6 +248,23 @@ function FarmerDashboard() {
         className="mb-4 px-4 py-2 border rounded w-full max-w-md"
       />
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {filteredRequests.length === 0 && <p className="text-gray-500">No requests found</p>}
+
+        {filteredRequests.map((request, index) => (
+          <div key={request?._id || `${request?.product || "request"}-${index}`} className="bg-white p-4 rounded shadow border">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{request?.productImage || "🌾"}</span>
+              <h3 className="font-bold text-lg">{request?.product || "Unnamed Product"}</h3>
+            </div>
+
+            <p className="text-sm">Quantity: {request?.quantity ?? "-"} kg</p>
+            <p className="text-sm">Price: {formatPrice(request)}</p>
+            <p className="text-sm">Dealer: {request?.dealerName || request?.dealer || "Dealer"}</p>
+            <p className="text-sm">Location: {request?.location || "India"}</p>
+
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => handleViewDetails(request)} className="flex-1 border px-3 py-1 rounded">
       {/* Requests */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {filteredRequests.map((request, index) => (
