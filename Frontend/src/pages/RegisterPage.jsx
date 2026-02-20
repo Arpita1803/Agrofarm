@@ -119,7 +119,6 @@ function RegisterPage() {
     const roleMap = {
       farmer: "Farmer",
       dealer: "Dealer",
-      admin: "Admin",
     };
     return roleMap[role] || "Select Role";
   };
@@ -155,8 +154,8 @@ function RegisterPage() {
               I am a *
             </label>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-xl w-full">
-              {["farmer", "dealer", "admin"].map((role) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl w-full">
+              {["farmer", "dealer"].map((role) => (
                 <div
                   key={role}
                   onClick={() =>
@@ -171,7 +170,6 @@ function RegisterPage() {
                   <div className="text-3xl mb-2">
                     {role === "farmer" && "🌾"}
                     {role === "dealer" && "🏪"}
-                    {role === "admin" && "🛡️"}
                   </div>
                   <div className="font-medium text-gray-800 capitalize">
                     {role}
