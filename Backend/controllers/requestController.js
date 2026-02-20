@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Request from "../models/Request.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
+import Msp from "../models/Msp.js";
 
 // Dealer creates request
 export const createRequest = async (req, res) => {
@@ -22,12 +23,33 @@ export const createRequest = async (req, res) => {
       return res.status(404).json({ message: "Dealer not found" });
     }
 
+    const normalizedProduct = String(product).trim().toLowerCase();
+    const numericMinPrice = Number(minPrice);
+    const numericMaxPrice = Number(maxPrice);
+
+    if (!Number.isFinite(numericMinPrice) || !Number.isFinite(numericMaxPrice) || numericMinPrice < 0 || numericMaxPrice < 0) {
+      return res.status(400).json({ message: "minPrice and maxPrice must be valid non-negative numbers" });
+    }
+
+    if (numericMinPrice > numericMaxPrice) {
+      return res.status(400).json({ message: "minPrice cannot be greater than maxPrice" });
+    }
+
+    const msp = await Msp.findOne({ product: normalizedProduct }).select("price");
+    if (!msp) {
+      return res.status(400).json({ message: "MSP not set for this product. Contact admin." });
+    }
+
+    if (numericMinPrice <= Number(msp.price)) {
+      return res.status(400).json({ message: `minPrice must be greater than MSP (₹${msp.price})` });
+    }
+
     const request = await Request.create({
       product,
       productImage,
       quantity: Number(quantity),
-      minPrice: Number(minPrice),
-      maxPrice: Number(maxPrice),
+      minPrice: numericMinPrice,
+      maxPrice: numericMaxPrice,
       location,
       description,
       requiredDate,

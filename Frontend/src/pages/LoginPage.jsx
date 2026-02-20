@@ -70,6 +70,8 @@ function LoginPage() {
           navigate('/farmer/dashboard');
         } else if (res.role === 'dealer') {
           navigate('/dealer/dashboard');
+        } else if (res.role === 'admin') {
+          navigate('/admin/msp');
         } else {
           navigate('/');
         }
