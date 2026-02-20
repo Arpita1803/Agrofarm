@@ -87,24 +87,31 @@ export const acceptRequest = async (req, res) => {
     }
 
     const agreedPrice = hasAgreedPrice ? parsedAgreedPrice : Number(claimedRequest.maxPrice);
+    if (!Number.isFinite(agreedPrice) || agreedPrice < 0) {
+      await Request.updateOne({ _id: claimedRequest._id, status: "accepted" }, { $set: { status: "open" } });
+      return res.status(400).json({ message: "agreedPrice must be a valid non-negative number" });
+    }
 
     let order;
     try {
       order = await Order.create({
-      requestId: claimedRequest._id,
-      dealerId: claimedRequest.dealerId,
-      dealerName: claimedRequest.dealerName,
-      farmerId: req.user.id,
-      farmerName: farmer.name,
-      product: claimedRequest.product,
-      productImage: claimedRequest.productImage,
-      quantity: claimedRequest.quantity,
-      agreedPrice,
-      status: "placed",
-      statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
+        requestId: claimedRequest._id,
+        dealerId: claimedRequest.dealerId,
+        dealerName: claimedRequest.dealerName,
+        farmerId: req.user.id,
+        farmerName: farmer.name,
+        product: claimedRequest.product,
+        productImage: claimedRequest.productImage,
+        quantity: claimedRequest.quantity,
+        agreedPrice,
+        status: "placed",
+        statusHistory: [{ status: "placed", updatedByRole: "farmer", updatedAt: new Date() }],
       });
     } catch (createError) {
-      await Request.updateOne({ _id: claimedRequest._id, status: "accepted" }, { $set: { status: "open" } });
+      const existingOrder = await Order.findOne({ requestId: claimedRequest._id }).select("_id");
+      if (!existingOrder) {
+        await Request.updateOne({ _id: claimedRequest._id, status: "accepted" }, { $set: { status: "open" } });
+      }
       throw createError;
     }
 

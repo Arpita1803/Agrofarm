@@ -68,6 +68,7 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     order.status = status;
+    order.statusHistory = order.statusHistory || [];
     order.statusHistory.push({
       status,
       updatedByRole: req.user.role,
