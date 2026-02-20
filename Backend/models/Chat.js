@@ -71,5 +71,5 @@ const chatSchema = new mongoose.Schema(
 
 chatSchema.index({ farmerId: 1, dealerId: 1, requestId: 1 }, { unique: false });
 chatSchema.index({ lastMessageAt: -1 });
-
+ 
 export default mongoose.model("Chat", chatSchema);
