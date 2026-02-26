@@ -1,11 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAdminDashboard } from "../../services/adminApi";
+import { fetchAdminComplaints, updateComplaintByAdmin } from "../../services/complaintApi";
 import { getCurrentUser } from "../../utils/roleGuard";
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [data, setData] = useState({ summary: {}, users: [], ads: [], orders: [], complaintCount: 0 });
+  const [data, setData] = useState({ summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] });
+  const [complaints, setComplaints] = useState([]);
+
+  const loadDashboard = async () => {
+    try {
+      const dashboard = await fetchAdminDashboard();
+      const safe = dashboard || { summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] };
+      setData(safe);
+      setComplaints(Array.isArray(safe.complaints) ? safe.complaints : []);
+    } catch (error) {
+      console.error("Failed to load admin dashboard", error);
+    }
+  };
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -14,17 +27,26 @@ function AdminDashboard() {
       return;
     }
 
-    const load = async () => {
-      try {
-        const dashboard = await fetchAdminDashboard();
-        setData(dashboard || { summary: {}, users: [], ads: [], orders: [], complaintCount: 0 });
-      } catch (error) {
-        console.error("Failed to load admin dashboard", error);
-      }
-    };
-
-    load();
+    loadDashboard();
   }, [navigate]);
+
+  const handleComplaintStatus = async (id, status) => {
+    try {
+      await updateComplaintByAdmin(id, { status });
+      await loadDashboard();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to update complaint");
+    }
+  };
+
+  const refreshComplaintsOnly = async () => {
+    try {
+      const list = await fetchAdminComplaints();
+      setComplaints(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error("Failed to refresh complaints", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 p-6">
@@ -32,15 +54,12 @@ function AdminDashboard() {
         <div className="bg-white border rounded-2xl p-5 shadow-sm flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-sm text-gray-600">Monitor users, ads, orders and MSP governance.</p>
+            <p className="text-sm text-gray-600">Monitor users, ads, orders, complaints and MSP governance.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => navigate('/admin/msp')} className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">
-              MSP Management
-            </button>
-            <button onClick={() => navigate('/login')} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">
-              Logout
-            </button>
+            <button onClick={() => navigate('/admin/msp')} className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">MSP Management</button>
+            <button onClick={refreshComplaintsOnly} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">Refresh Complaints</button>
+            <button onClick={() => navigate('/login')} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">Logout</button>
           </div>
         </div>
 
@@ -50,6 +69,34 @@ function AdminDashboard() {
           <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Total Orders</p><p className="text-2xl font-bold">{data.summary?.totalOrders || 0}</p></div>
           <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Complaints</p><p className="text-2xl font-bold text-red-600">{data.complaintCount || 0}</p></div>
         </div>
+
+        <section className="bg-white border rounded-xl p-4 shadow-sm">
+          <h2 className="font-semibold mb-3">Complaints Management (Phase 1)</h2>
+          <div className="max-h-80 overflow-auto space-y-2">
+            {complaints.map((item) => (
+              <div key={item._id} className="border rounded-lg p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{item.title}</p>
+                  <select
+                    value={item.status}
+                    onChange={(e) => handleComplaintStatus(item._id, e.target.value)}
+                    className="border rounded p-1 text-xs"
+                  >
+                    <option value="open">open</option>
+                    <option value="in_progress">in_progress</option>
+                    <option value="resolved">resolved</option>
+                    <option value="rejected">rejected</option>
+                  </select>
+                </div>
+                <p className="text-gray-600 mt-1">Type: {item.type} • Priority: {item.priority}</p>
+                <p className="text-gray-700 mt-1">{item.description}</p>
+                <p className="text-gray-500 mt-1">Raised by: {item?.raisedByUserId?.name || "Unknown"} ({item.raisedByRole})</p>
+                {item.orderId && <p className="text-gray-500">Order Ref: {item.orderId?._id || item.orderId} • {item.orderId?.product || "Order"} ({item.orderId?.status || ""})</p>}
+              </div>
+            ))}
+            {complaints.length === 0 && <p className="text-sm text-gray-500">No complaints yet.</p>}
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="bg-white border rounded-xl p-4 lg:col-span-1 shadow-sm">

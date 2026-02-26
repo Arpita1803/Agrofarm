@@ -1,0 +1,54 @@
+import mongoose from "mongoose";
+
+const complaintSchema = new mongoose.Schema(
+  {
+    raisedByUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    raisedByRole: {
+      type: String,
+      enum: ["farmer", "dealer", "admin"],
+      required: true,
+    },
+    type: {
+      type: String,
+      enum: ["order_related", "website_related"],
+      required: true,
+    },
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      default: null,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: ["open", "in_progress", "resolved", "rejected"],
+      default: "open",
+    },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
+    adminNote: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Complaint", complaintSchema);

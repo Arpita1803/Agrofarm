@@ -10,6 +10,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import mspRoutes from "./routes/mspRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import complaintRoutes from "./routes/complaintRoutes.js";
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/msp", mspRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/complaints", complaintRoutes);
 
 // Database connection
 mongoose

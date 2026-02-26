@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchRequests } from "../../services/requestApi";
 import { fetchMyOrders } from "../../services/orderApi";
 import { fetchMyChats } from "../../services/chatApi";
+import { createComplaint } from "../../services/complaintApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
 import LanguageSelection from "../../components/common/LanguageSelection";
 import { getCurrentUser } from "../../utils/roleGuard";
@@ -18,6 +19,16 @@ function FarmerDashboard() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [requestToChat, setRequestToChat] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [myOrders, setMyOrders] = useState([]);
+
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaintData, setComplaintData] = useState({
+    type: "website_related",
+    orderId: "",
+    title: "",
+    description: "",
+  });
+  const [complaintSubmitting, setComplaintSubmitting] = useState(false);
 
   const [stats, setStats] = useState({
     openRequests: 0,
@@ -63,10 +74,10 @@ function FarmerDashboard() {
 
       try {
         const [orders, chats] = await Promise.all([fetchMyOrders(), fetchMyChats()]);
+        const orderList = Array.isArray(orders) ? orders : [];
+        setMyOrders(orderList);
 
-        const activeOrders = Array.isArray(orders)
-          ? orders.filter((o) => !["delivered", "cancelled"].includes(o?.status)).length
-          : 0;
+        const activeOrders = orderList.filter((o) => !["delivered", "cancelled"].includes(o?.status)).length;
         const chatCount = Array.isArray(chats) ? chats.length : 0;
 
         setStats((prev) => ({
@@ -117,12 +128,34 @@ function FarmerDashboard() {
     navigate("/login");
   };
 
+  const handleComplaintSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setComplaintSubmitting(true);
+      await createComplaint({
+        type: complaintData.type,
+        orderId: complaintData.type === "order_related" ? complaintData.orderId : undefined,
+        title: complaintData.title,
+        description: complaintData.description,
+      });
+      alert("Complaint submitted successfully");
+      setComplaintData({ type: "website_related", orderId: "", title: "", description: "" });
+      setShowComplaintModal(false);
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to submit complaint");
+    } finally {
+      setComplaintSubmitting(false);
+    }
+  };
+
   const formatPrice = (request) => {
     if (request?.minPrice !== undefined && request?.maxPrice !== undefined) {
       return `₹${request.minPrice} - ₹${request.maxPrice}`;
     }
     return request?.priceExpected ?? "Not specified";
   };
+
+  const selectedOrder = myOrders.find((o) => String(o._id || o.id) === String(complaintData.orderId));
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -133,59 +166,32 @@ function FarmerDashboard() {
         </div>
 
         <div className="flex items-center gap-2 relative" ref={menuRef}>
-          <button
-            title="Orders"
-            onClick={() => navigate("/farmer/orders")}
-            className="bg-white border px-3 py-2 rounded-lg hover:bg-gray-100"
-          >
+          <button title="Orders" onClick={() => navigate("/farmer/orders")} className="bg-white border px-3 py-2 rounded-lg hover:bg-gray-100">
             🛒 <span className="hidden sm:inline">Orders</span>
           </button>
-          <button
-            title="Chats"
-            onClick={() => navigate("/farmer/chats")}
-            className="bg-white border px-3 py-2 rounded-lg hover:bg-gray-100"
-          >
+          <button title="Chats" onClick={() => navigate("/farmer/chats")} className="bg-white border px-3 py-2 rounded-lg hover:bg-gray-100">
             💬 <span className="hidden sm:inline">Chats</span>
           </button>
-          <button onClick={() => setShowMenu(!showMenu)} className="text-2xl px-2 hover:bg-gray-200 rounded">
-            ⋮
+          <button title="Raise Complaint" onClick={() => setShowComplaintModal(true)} className="bg-red-50 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 text-red-700">
+            ⚠️ <span className="hidden sm:inline">Complaint</span>
           </button>
+          <button onClick={() => setShowMenu(!showMenu)} className="text-2xl px-2 hover:bg-gray-200 rounded">⋮</button>
 
           {showMenu && (
             <div className="absolute right-0 top-12 bg-white border rounded-xl shadow-lg w-40">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-3 text-red-600 hover:bg-gray-100 rounded-xl"
-              >
-                🚪 Logout
-              </button>
+              <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-red-600 hover:bg-gray-100 rounded-xl">🚪 Logout</button>
             </div>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
-          <p className="text-sm text-gray-600">Open Requests</p>
-          <p className="text-2xl font-bold">{stats.openRequests}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
-          <p className="text-sm text-gray-600">My Active Orders</p>
-          <p className="text-2xl font-bold">{stats.activeOrders}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
-          <p className="text-sm text-gray-600">My Chats</p>
-          <p className="text-2xl font-bold">{stats.chats}</p>
-        </div>
+        <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">Open Requests</p><p className="text-2xl font-bold">{stats.openRequests}</p></div>
+        <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">My Active Orders</p><p className="text-2xl font-bold">{stats.activeOrders}</p></div>
+        <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">My Chats</p><p className="text-2xl font-bold">{stats.chats}</p></div>
       </div>
 
-      <input
-        type="text"
-        placeholder="Search requests..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="mb-4 px-4 py-2 border rounded w-full max-w-md"
-      />
+      <input type="text" placeholder="Search requests..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mb-4 px-4 py-2 border rounded w-full max-w-md" />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {filteredRequests.map((request, index) => (
@@ -194,23 +200,93 @@ function FarmerDashboard() {
               <span className="text-2xl">{request?.productImage || "🌾"}</span>
               <h3 className="font-bold text-lg">{request?.product || "Unnamed Product"}</h3>
             </div>
-
             <p className="text-sm">Quantity: {request?.quantity} kg</p>
             <p className="text-sm">Price: {formatPrice(request)}</p>
             <p className="text-sm">Dealer: {request?.dealer || request?.dealerName || "Dealer"}</p>
             <p className="text-sm">Location: {request?.location || "India"}</p>
-
             <div className="mt-3">
-              <button
-                onClick={() => handleViewDetails(request)}
-                className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-              >
-                Details
-              </button>
+              <button onClick={() => handleViewDetails(request)} className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Details</button>
             </div>
           </div>
         ))}
       </div>
+
+      {showComplaintModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleComplaintSubmit} className="bg-white rounded-xl shadow-xl w-full max-w-xl p-5 space-y-4">
+            <h3 className="text-xl font-bold text-gray-900">Raise Complaint</h3>
+
+            <div>
+              <label className="block text-sm mb-1">Complaint Type</label>
+              <select
+                value={complaintData.type}
+                onChange={(e) => setComplaintData((prev) => ({ ...prev, type: e.target.value, orderId: "" }))}
+                className="w-full border rounded-lg p-2"
+              >
+                <option value="website_related">Website related</option>
+                <option value="order_related">Order related</option>
+              </select>
+            </div>
+
+            {complaintData.type === "order_related" && (
+              <>
+                <div>
+                  <label className="block text-sm mb-1">Order</label>
+                  <select
+                    value={complaintData.orderId}
+                    onChange={(e) => setComplaintData((prev) => ({ ...prev, orderId: e.target.value }))}
+                    className="w-full border rounded-lg p-2"
+                    required
+                  >
+                    <option value="">Select order</option>
+                    {myOrders.map((order) => {
+                      const id = order._id || order.id;
+                      return (
+                        <option key={id} value={id}>
+                          {id} • {order.product} • {order.status}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {selectedOrder && (
+                  <div className="bg-gray-50 border rounded-lg p-3 text-sm">
+                    <p><b>Product:</b> {selectedOrder.product}</p>
+                    <p><b>Dealer:</b> {selectedOrder.dealerName || selectedOrder.dealer || "Dealer"}</p>
+                    <p><b>Status:</b> {selectedOrder.status}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            <input
+              type="text"
+              placeholder="Title"
+              value={complaintData.title}
+              onChange={(e) => setComplaintData((prev) => ({ ...prev, title: e.target.value }))}
+              className="w-full border rounded-lg p-2"
+              required
+            />
+
+            <textarea
+              placeholder="Describe your issue"
+              value={complaintData.description}
+              onChange={(e) => setComplaintData((prev) => ({ ...prev, description: e.target.value }))}
+              className="w-full border rounded-lg p-2"
+              rows="4"
+              required
+            />
+
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setShowComplaintModal(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+              <button disabled={complaintSubmitting} className="px-4 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50">
+                {complaintSubmitting ? "Submitting..." : "Submit Complaint"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showRequestDetails && selectedRequest && (
         <RequestDetails
