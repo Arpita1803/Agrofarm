@@ -19,7 +19,7 @@ const flowByDeliveryMode = {
   meet_point: ['placed', 'packed', 'ready_for_delivery', 'delivered'],
 };
 
-function OrderDetails({ order, userRole, onClose, onTrack, onChat, onCancel, onAccept, onReject, onUpdateStatus }) {
+function OrderDetails({ order, userRole, onClose, onTrack, onChat, onCancel, onAccept, onReject, onUpdateStatus, onReview }) {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -138,6 +138,9 @@ function OrderDetails({ order, userRole, onClose, onTrack, onChat, onCancel, onA
           <div className="flex flex-wrap gap-3">
             <button onClick={onTrack} className="px-4 py-2 bg-green-600 text-white rounded">Track</button>
             <button onClick={onChat} className="px-4 py-2 bg-blue-600 text-white rounded">Chat</button>
+            {userRole === 'dealer' && order.status === 'delivered' && onReview && (
+              <button onClick={onReview} className="px-4 py-2 bg-yellow-500 text-white rounded">Rate & Review</button>
+            )}
             {userRole === 'farmer' && ['placed', 'packed'].includes(order.status) && (
               <button onClick={onCancel} className="px-4 py-2 bg-red-600 text-white rounded">Cancel</button>
             )}
@@ -150,3 +153,4 @@ function OrderDetails({ order, userRole, onClose, onTrack, onChat, onCancel, onA
 }
 
 export default OrderDetails;
+ 

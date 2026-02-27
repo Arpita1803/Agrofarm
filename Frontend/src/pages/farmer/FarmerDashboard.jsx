@@ -4,6 +4,7 @@ import { fetchRequests } from "../../services/requestApi";
 import { fetchMyOrders } from "../../services/orderApi";
 import { fetchMyChats } from "../../services/chatApi";
 import { createComplaint } from "../../services/complaintApi";
+import { fetchMyReviewSummary } from "../../services/reviewApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
 import LanguageSelection from "../../components/common/LanguageSelection";
 import { getCurrentUser } from "../../utils/roleGuard";
@@ -34,6 +35,8 @@ function FarmerDashboard() {
     openRequests: 0,
     activeOrders: 0,
     chats: 0,
+    avgRating: "0.00",
+    totalReviews: 0,
   });
 
   useEffect(() => {
@@ -73,7 +76,7 @@ function FarmerDashboard() {
       await loadRequests();
 
       try {
-        const [orders, chats] = await Promise.all([fetchMyOrders(), fetchMyChats()]);
+        const [orders, chats, reviewSummary] = await Promise.all([fetchMyOrders(), fetchMyChats(), fetchMyReviewSummary()]);
         const orderList = Array.isArray(orders) ? orders : [];
         setMyOrders(orderList);
 
@@ -84,6 +87,8 @@ function FarmerDashboard() {
           ...prev,
           activeOrders,
           chats: chatCount,
+          avgRating: reviewSummary?.avgRating || "0.00",
+          totalReviews: reviewSummary?.totalReviews || 0,
         }));
       } catch (error) {
         console.error("Failed to load farmer dashboard stats", error);
@@ -185,10 +190,15 @@ function FarmerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
         <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">Open Requests</p><p className="text-2xl font-bold">{stats.openRequests}</p></div>
         <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">My Active Orders</p><p className="text-2xl font-bold">{stats.activeOrders}</p></div>
         <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">My Chats</p><p className="text-2xl font-bold">{stats.chats}</p></div>
+        <div className="bg-white p-4 rounded-xl border shadow-sm">
+          <p className="text-sm text-gray-600">My Rating</p>
+          <p className="text-2xl font-bold">{stats.avgRating}/10</p>
+          <p className="text-xs text-gray-500">{stats.totalReviews} reviews</p>
+        </div>
       </div>
 
       <input type="text" placeholder="Search requests..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mb-4 px-4 py-2 border rounded w-full max-w-md" />
