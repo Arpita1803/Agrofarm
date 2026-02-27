@@ -29,3 +29,18 @@ export const fetchMyReceivedReviews = async () => {
   const res = await API.get("/reviews/my/received");
   return res.data;
 };
+
+export const fetchMyReviewSummary = async () => {
+  const res = await API.get("/reviews/my/summary");
+  return res.data;
+};
+
+export const fetchAdminReviews = async (moderationStatus = "all") => {
+  const res = await API.get(`/reviews/admin/all?moderationStatus=${encodeURIComponent(moderationStatus)}`);
+  return res.data;
+};
+
+export const moderateReviewByAdmin = async (id, payload) => {
+  const res = await API.patch(`/reviews/admin/${id}`, payload);
+  return res.data;
+};

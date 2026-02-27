@@ -2,19 +2,26 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAdminDashboard } from "../../services/adminApi";
 import { fetchAdminComplaints, updateComplaintByAdmin } from "../../services/complaintApi";
+import { fetchAdminReviews, moderateReviewByAdmin } from "../../services/reviewApi";
 import { getCurrentUser } from "../../utils/roleGuard";
 
 function AdminDashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState({ summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] });
   const [complaints, setComplaints] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [reviewFilter, setReviewFilter] = useState("all");
 
   const loadDashboard = async () => {
     try {
-      const dashboard = await fetchAdminDashboard();
+      const [dashboard, reviewList] = await Promise.all([
+        fetchAdminDashboard(),
+        fetchAdminReviews(reviewFilter),
+      ]);
       const safe = dashboard || { summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] };
       setData(safe);
       setComplaints(Array.isArray(safe.complaints) ? safe.complaints : []);
+      setReviews(Array.isArray(reviewList) ? reviewList : []);
     } catch (error) {
       console.error("Failed to load admin dashboard", error);
     }
@@ -28,7 +35,7 @@ function AdminDashboard() {
     }
 
     loadDashboard();
-  }, [navigate]);
+  }, [navigate, reviewFilter]);
 
   const handleComplaintStatus = async (id, status) => {
     try {
@@ -48,6 +55,15 @@ function AdminDashboard() {
     }
   };
 
+  const handleReviewModeration = async (id, moderationStatus) => {
+    try {
+      await moderateReviewByAdmin(id, { moderationStatus });
+      await loadDashboard();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to moderate review");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -63,11 +79,13 @@ function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Total Users</p><p className="text-2xl font-bold">{data.summary?.totalUsers || 0}</p></div>
           <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Total Ads</p><p className="text-2xl font-bold">{data.summary?.totalAds || 0}</p></div>
           <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Total Orders</p><p className="text-2xl font-bold">{data.summary?.totalOrders || 0}</p></div>
           <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Complaints</p><p className="text-2xl font-bold text-red-600">{data.complaintCount || 0}</p></div>
+          <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Reviews</p><p className="text-2xl font-bold text-blue-700">{data.reviewCount || 0}</p></div>
+          <div className="bg-white border rounded-xl p-4 shadow-sm"><p className="text-xs text-gray-500">Hidden Reviews</p><p className="text-2xl font-bold text-amber-700">{data.hiddenReviewCount || 0}</p></div>
         </div>
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
@@ -95,6 +113,47 @@ function AdminDashboard() {
               </div>
             ))}
             {complaints.length === 0 && <p className="text-sm text-gray-500">No complaints yet.</p>}
+          </div>
+        </section>
+
+        <section className="bg-white border rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h2 className="font-semibold">Reviews Management (Phase 3)</h2>
+            <select
+              value={reviewFilter}
+              onChange={(e) => setReviewFilter(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+
+          <div className="max-h-80 overflow-auto space-y-2">
+            {reviews.map((item) => (
+              <div key={item._id} className="border rounded-lg p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">
+                    {item?.orderId?.product || "Order"} • {Number(item.rating).toFixed(1)}/10
+                  </p>
+                  <select
+                    value={item.moderationStatus || "visible"}
+                    onChange={(e) => handleReviewModeration(item._id, e.target.value)}
+                    className="border rounded p-1 text-xs"
+                  >
+                    <option value="visible">visible</option>
+                    <option value="hidden">hidden</option>
+                  </select>
+                </div>
+                <p className="text-gray-600 mt-1">
+                  By: {item?.reviewerId?.name || "Unknown"} ({item?.reviewerRole}) → {item?.revieweeId?.name || "Unknown"} ({item?.revieweeRole})
+                </p>
+                {item.reviewText && <p className="text-gray-700 mt-1">{item.reviewText}</p>}
+                <p className="text-gray-500 mt-1">Photos: {item?.photoUrls?.length || 0}</p>
+              </div>
+            ))}
+            {reviews.length === 0 && <p className="text-sm text-gray-500">No reviews found.</p>}
           </div>
         </section>
 

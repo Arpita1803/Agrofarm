@@ -43,6 +43,26 @@ const reviewSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    moderationStatus: {
+      type: String,
+      enum: ["visible", "hidden"],
+      default: "visible",
+    },
+    adminNote: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+    moderatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    moderatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
