@@ -209,7 +209,7 @@ function FarmerDashboard() {
 
       <section className="mb-5 bg-white border rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">My Complaints (Phase 6)</h3>
+          <h3 className="font-semibold">My Complaints (Phase 8)</h3>
           <span className="text-sm text-gray-500">{myComplaints.length}</span>
         </div>
         <div className="max-h-44 overflow-auto space-y-2">
@@ -218,6 +218,9 @@ function FarmerDashboard() {
               <p className="font-medium">{c.title} <span className="text-xs text-gray-500">({c.trackingId || "N/A"})</span></p>
               <p className="text-xs text-gray-600">{c.type} • {c.status} • {new Date(c.createdAt).toLocaleDateString("en-IN")}</p>
               {c.dueAt && <p className="text-xs text-gray-600">Due: {new Date(c.dueAt).toLocaleDateString("en-IN")} {c.isOverdue ? "• OVERDUE" : ""}</p>}
+              {Array.isArray(c.messages) && c.messages.length > 0 && (
+                <p className="text-xs text-blue-700">Latest update: {c.messages[c.messages.length - 1]?.message}</p>
+              )}
             </div>
           ))}
           {myComplaints.length === 0 && <p className="text-sm text-gray-500">No complaints raised yet.</p>}

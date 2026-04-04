@@ -124,6 +124,37 @@ const complaintSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    messages: {
+      type: [
+        {
+          senderRole: {
+            type: String,
+            enum: ["farmer", "dealer", "admin"],
+            required: true,
+          },
+          senderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          message: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: 1000,
+          },
+          isInternal: {
+            type: Boolean,
+            default: false,
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

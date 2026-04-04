@@ -52,3 +52,13 @@ export const exportAdminComplaintsCsv = async () => {
   const res = await API.get("/complaints/admin/export", { responseType: "blob" });
   return res.data;
 };
+
+export const fetchComplaintMessages = async (complaintId) => {
+  const res = await API.get(`/complaints/${complaintId}/messages`);
+  return res.data;
+};
+
+export const addComplaintMessage = async (complaintId, payload) => {
+  const res = await API.post(`/complaints/${complaintId}/messages`, payload);
+  return res.data;
+};

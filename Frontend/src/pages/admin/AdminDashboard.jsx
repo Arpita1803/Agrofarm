@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAdminDashboard } from "../../services/adminApi";
-import { bulkUpdateAdminComplaints, exportAdminComplaintsCsv, fetchAdminComplaints, fetchComplaintMetrics, updateComplaintByAdmin } from "../../services/complaintApi";
+import { addComplaintMessage as addComplaintMessageApi, bulkUpdateAdminComplaints, exportAdminComplaintsCsv, fetchAdminComplaints, fetchComplaintMetrics, updateComplaintByAdmin } from "../../services/complaintApi";
 import { fetchAdminReviews, moderateReviewByAdmin } from "../../services/reviewApi";
 import { getCurrentUser } from "../../utils/roleGuard";
 
@@ -136,6 +136,16 @@ function AdminDashboard() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       alert(error?.response?.data?.message || "Failed to export complaints CSV");
+    }
+  };
+
+  const handleAddComplaintReply = async (id, message) => {
+    if (!String(message || "").trim()) return;
+    try {
+      await addComplaintMessageApi(id, { message });
+      await loadDashboard();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to add complaint reply");
     }
   };
 
@@ -283,6 +293,17 @@ function AdminDashboard() {
                     />
                   )}
                 </div>
+                <input
+                  placeholder="Add reply for user"
+                  className="mt-2 border rounded p-1 text-xs w-full"
+                  onBlur={(e) => {
+                    handleAddComplaintReply(item._id, e.target.value);
+                    e.target.value = "";
+                  }}
+                />
+                {Array.isArray(item.messages) && item.messages.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">Conversation messages: {item.messages.length}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">History events: {item?.history?.length || 0} • Escalation: L{item?.escalationLevel || 0}</p>
               </div>
             ))}

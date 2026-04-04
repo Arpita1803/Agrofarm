@@ -66,6 +66,15 @@ export const createComplaint = async (req, res) => {
           changedAt: new Date(),
         },
       ],
+      messages: [
+        {
+          senderRole: req.user.role,
+          senderId: req.user.id,
+          message: String(description),
+          isInternal: false,
+          createdAt: new Date(),
+        },
+      ],
     });
 
     return res.status(201).json(complaint);
@@ -388,6 +397,79 @@ export const exportComplaintsCsvForAdmin = async (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename=complaints-${Date.now()}.csv`);
     return res.status(200).send(csv);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getComplaintMessages = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid complaint id" });
+    }
+
+    const complaint = await Complaint.findById(id).populate("messages.senderId", "name email role");
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    const canView = req.user.role === "admin" || String(complaint.raisedByUserId) === String(req.user.id);
+    if (!canView) {
+      return res.status(403).json({ message: "Not authorized to view complaint messages" });
+    }
+
+    const messages = Array.isArray(complaint.messages) ? complaint.messages : [];
+    const visible = req.user.role === "admin" ? messages : messages.filter((m) => !m.isInternal);
+    return res.json(visible);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const addComplaintMessage = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { message, isInternal = false } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid complaint id" });
+    }
+    if (!String(message || "").trim()) {
+      return res.status(400).json({ message: "message is required" });
+    }
+
+    const complaint = await Complaint.findById(id);
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    const isAdmin = req.user.role === "admin";
+    const isOwner = String(complaint.raisedByUserId) === String(req.user.id);
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: "Not authorized to add complaint message" });
+    }
+
+    const internal = Boolean(isInternal) && isAdmin;
+    complaint.messages = Array.isArray(complaint.messages) ? complaint.messages : [];
+    complaint.messages.push({
+      senderRole: req.user.role,
+      senderId: req.user.id,
+      message: String(message).trim(),
+      isInternal: internal,
+      createdAt: new Date(),
+    });
+
+    await complaint.save();
+    return res.status(201).json({ message: "Comment added" });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
