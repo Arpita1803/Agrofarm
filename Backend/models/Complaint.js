@@ -91,6 +91,22 @@ const complaintSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    dueAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    escalated: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    escalationLevel: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3,
+    },
   },
   { timestamps: true }
 );

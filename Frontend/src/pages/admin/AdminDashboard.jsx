@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAdminDashboard } from "../../services/adminApi";
-import { fetchAdminComplaints, updateComplaintByAdmin } from "../../services/complaintApi";
+import { fetchAdminComplaints, fetchComplaintMetrics, updateComplaintByAdmin } from "../../services/complaintApi";
 import { fetchAdminReviews, moderateReviewByAdmin } from "../../services/reviewApi";
 import { getCurrentUser } from "../../utils/roleGuard";
 
@@ -12,18 +12,21 @@ function AdminDashboard() {
   const [reviews, setReviews] = useState([]);
   const [reviewFilter, setReviewFilter] = useState("all");
   const [complaintFilters, setComplaintFilters] = useState({ status: "all", type: "all", priority: "all", q: "" });
+  const [complaintMetrics, setComplaintMetrics] = useState({ open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0 });
 
   const loadDashboard = async () => {
     try {
-      const [dashboard, reviewList, complaintList] = await Promise.all([
+      const [dashboard, reviewList, complaintList, metrics] = await Promise.all([
         fetchAdminDashboard(),
         fetchAdminReviews(reviewFilter),
         fetchAdminComplaints(complaintFilters),
+        fetchComplaintMetrics(),
       ]);
       const safe = dashboard || { summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] };
       setData(safe);
       setComplaints(Array.isArray(complaintList) ? complaintList : []);
       setReviews(Array.isArray(reviewList) ? reviewList : []);
+      setComplaintMetrics(metrics || { open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0 });
     } catch (error) {
       console.error("Failed to load admin dashboard", error);
     }
@@ -100,7 +103,16 @@ function AdminDashboard() {
         </div>
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold mb-3">Complaints Management (Phase 1)</h2>
+          <h2 className="font-semibold mb-3">Complaints Management (Phase 5)</h2>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3 text-center">
+            <div className="border rounded p-2"><p className="text-xs text-gray-500">Open</p><p className="font-semibold">{complaintMetrics.open}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-gray-500">In Progress</p><p className="font-semibold">{complaintMetrics.inProgress}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-gray-500">Resolved</p><p className="font-semibold">{complaintMetrics.resolved}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-gray-500">Rejected</p><p className="font-semibold">{complaintMetrics.rejected}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-amber-600">Escalated</p><p className="font-semibold text-amber-700">{complaintMetrics.escalated}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-red-600">Overdue</p><p className="font-semibold text-red-700">{complaintMetrics.overdue}</p></div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
             <select value={complaintFilters.status} onChange={(e) => setComplaintFilters((p) => ({ ...p, status: e.target.value }))} className="border rounded p-2 text-sm">
               <option value="all">All status</option>
@@ -125,7 +137,7 @@ function AdminDashboard() {
 
           <div className="max-h-80 overflow-auto space-y-2">
             {complaints.map((item) => (
-              <div key={item._id} className="border rounded-lg p-3 text-sm">
+              <div key={item._id} className={`border rounded-lg p-3 text-sm ${item.isOverdue ? "border-red-300 bg-red-50" : ""}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{item.title} <span className="text-xs text-gray-500">({item.trackingId})</span></p>
                   <select
@@ -140,6 +152,7 @@ function AdminDashboard() {
                   </select>
                 </div>
                 <p className="text-gray-600 mt-1">Type: {item.type} • Priority: {item.priority}</p>
+                <p className="text-gray-600 mt-1">Due: {item?.dueAt ? new Date(item.dueAt).toLocaleString("en-IN") : "N/A"} {item.isOverdue ? "• OVERDUE" : ""}</p>
                 <p className="text-gray-700 mt-1">{item.description}</p>
                 <p className="text-gray-500 mt-1">Raised by: {item?.raisedByUserId?.name || "Unknown"} ({item.raisedByRole})</p>
                 {item.orderId && <p className="text-gray-500">Order Ref: {item.orderId?._id || item.orderId} • {item.orderId?.product || "Order"} ({item.orderId?.status || ""})</p>}
@@ -160,7 +173,7 @@ function AdminDashboard() {
                     className="border rounded p-1 text-xs"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">History events: {item?.history?.length || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">History events: {item?.history?.length || 0} • Escalation: L{item?.escalationLevel || 0}</p>
               </div>
             ))}
             {complaints.length === 0 && <p className="text-sm text-gray-500">No complaints yet.</p>}

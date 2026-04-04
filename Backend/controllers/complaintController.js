@@ -3,6 +3,8 @@ import Complaint from "../models/Complaint.js";
 import Order from "../models/Order.js";
 
 const generateTrackingId = () => `CMP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+const SLA_HOURS_BY_PRIORITY = { low: 120, medium: 72, high: 24 };
+const getDueDateForPriority = (priority) => new Date(Date.now() + (SLA_HOURS_BY_PRIORITY[priority] || SLA_HOURS_BY_PRIORITY.medium) * 60 * 60 * 1000);
 
 export const createComplaint = async (req, res) => {
   try {
@@ -51,6 +53,9 @@ export const createComplaint = async (req, res) => {
       title,
       description,
       status: "open",
+      dueAt: getDueDateForPriority("medium"),
+      escalated: false,
+      escalationLevel: 0,
       history: [
         {
           status: "open",
@@ -78,7 +83,12 @@ export const getMyComplaints = async (req, res) => {
     const complaints = await Complaint.find({ raisedByUserId: req.user.id })
       .sort({ createdAt: -1 })
       .populate("orderId", "product status dealerName farmerName");
-    return res.json(complaints);
+    const now = Date.now();
+    const mapped = complaints.map((c) => ({
+      ...c.toObject(),
+      isOverdue: c.dueAt ? new Date(c.dueAt).getTime() < now && !["resolved", "rejected"].includes(c.status) : false,
+    }));
+    return res.json(mapped);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -107,8 +117,13 @@ export const getAllComplaintsForAdmin = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("raisedByUserId", "name email role")
       .populate("orderId", "product dealerName farmerName status");
+    const now = Date.now();
+    const mapped = complaints.map((c) => ({
+      ...c.toObject(),
+      isOverdue: c.dueAt ? new Date(c.dueAt).getTime() < now && !["resolved", "rejected"].includes(c.status) : false,
+    }));
 
-    return res.json(complaints);
+    return res.json(mapped);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -148,6 +163,9 @@ export const updateComplaintByAdmin = async (req, res) => {
       }
       if (complaint.priority !== priority) changed = true;
       complaint.priority = priority;
+      if (!["resolved", "rejected"].includes(complaint.status)) {
+        complaint.dueAt = getDueDateForPriority(priority);
+      }
     }
 
     if (adminNote !== undefined) {
@@ -167,8 +185,38 @@ export const updateComplaintByAdmin = async (req, res) => {
       });
     }
 
+    const now = Date.now();
+    const overdue = complaint.dueAt ? new Date(complaint.dueAt).getTime() < now : false;
+    complaint.escalated = overdue && !["resolved", "rejected"].includes(complaint.status);
+    complaint.escalationLevel = complaint.escalated ? Math.min((complaint.escalationLevel || 0) + 1, 3) : 0;
+
     await complaint.save();
     return res.json(complaint);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getComplaintMetricsForAdmin = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admin can access complaint metrics" });
+    }
+
+    const now = new Date();
+    const [open, inProgress, resolved, rejected, escalated, overdue] = await Promise.all([
+      Complaint.countDocuments({ status: "open" }),
+      Complaint.countDocuments({ status: "in_progress" }),
+      Complaint.countDocuments({ status: "resolved" }),
+      Complaint.countDocuments({ status: "rejected" }),
+      Complaint.countDocuments({ escalated: true }),
+      Complaint.countDocuments({
+        status: { $in: ["open", "in_progress"] },
+        dueAt: { $lt: now },
+      }),
+    ]);
+
+    return res.json({ open, inProgress, resolved, rejected, escalated, overdue });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

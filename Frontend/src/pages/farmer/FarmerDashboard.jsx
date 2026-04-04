@@ -214,9 +214,10 @@ function FarmerDashboard() {
         </div>
         <div className="max-h-44 overflow-auto space-y-2">
           {myComplaints.slice(0, 8).map((c) => (
-            <div key={c._id} className="text-sm border rounded p-2">
+            <div key={c._id} className={`text-sm border rounded p-2 ${c.isOverdue ? "border-red-300 bg-red-50" : ""}`}>
               <p className="font-medium">{c.title} <span className="text-xs text-gray-500">({c.trackingId || "N/A"})</span></p>
               <p className="text-xs text-gray-600">{c.type} • {c.status} • {new Date(c.createdAt).toLocaleDateString("en-IN")}</p>
+              {c.dueAt && <p className="text-xs text-gray-600">Due: {new Date(c.dueAt).toLocaleDateString("en-IN")} {c.isOverdue ? "• OVERDUE" : ""}</p>}
             </div>
           ))}
           {myComplaints.length === 0 && <p className="text-sm text-gray-500">No complaints raised yet.</p>}

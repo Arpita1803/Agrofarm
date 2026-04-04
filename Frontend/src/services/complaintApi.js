@@ -33,6 +33,11 @@ export const fetchAdminComplaints = async (filters = {}) => {
   return res.data;
 };
 
+export const fetchComplaintMetrics = async () => {
+  const res = await API.get("/complaints/admin/metrics");
+  return res.data;
+};
+
 export const updateComplaintByAdmin = async (complaintId, payload) => {
   const res = await API.patch(`/complaints/admin/${complaintId}`, payload);
   return res.data;
