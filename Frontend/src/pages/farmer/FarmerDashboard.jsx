@@ -209,7 +209,7 @@ function FarmerDashboard() {
 
       <section className="mb-5 bg-white border rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">My Complaints (Phase 8)</h3>
+          <h3 className="font-semibold">My Complaints (Phase 9)</h3>
           <span className="text-sm text-gray-500">{myComplaints.length}</span>
         </div>
         <div className="max-h-44 overflow-auto space-y-2">
@@ -220,6 +220,9 @@ function FarmerDashboard() {
               {c.dueAt && <p className="text-xs text-gray-600">Due: {new Date(c.dueAt).toLocaleDateString("en-IN")} {c.isOverdue ? "• OVERDUE" : ""}</p>}
               {Array.isArray(c.messages) && c.messages.length > 0 && (
                 <p className="text-xs text-blue-700">Latest update: {c.messages[c.messages.length - 1]?.message}</p>
+              )}
+              {c.lastAdminMessageAt && (!c.lastUserMessageAt || new Date(c.lastAdminMessageAt).getTime() > new Date(c.lastUserMessageAt).getTime()) && (
+                <p className="text-xs text-indigo-700">Action needed: admin replied, please review.</p>
               )}
             </div>
           ))}

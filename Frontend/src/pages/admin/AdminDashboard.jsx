@@ -12,7 +12,7 @@ function AdminDashboard() {
   const [reviews, setReviews] = useState([]);
   const [reviewFilter, setReviewFilter] = useState("all");
   const [complaintFilters, setComplaintFilters] = useState({ status: "all", type: "all", priority: "all", q: "" });
-  const [complaintMetrics, setComplaintMetrics] = useState({ open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0 });
+  const [complaintMetrics, setComplaintMetrics] = useState({ open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0, waitingOnAdmin: 0, waitingOnUser: 0 });
   const [selectedComplaintIds, setSelectedComplaintIds] = useState([]);
   const [bulkAction, setBulkAction] = useState({ status: "", priority: "", assignToMe: true, adminNote: "" });
 
@@ -29,7 +29,7 @@ function AdminDashboard() {
       setComplaints(Array.isArray(complaintList) ? complaintList : []);
       setSelectedComplaintIds([]);
       setReviews(Array.isArray(reviewList) ? reviewList : []);
-      setComplaintMetrics(metrics || { open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0 });
+      setComplaintMetrics(metrics || { open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0, waitingOnAdmin: 0, waitingOnUser: 0 });
     } catch (error) {
       console.error("Failed to load admin dashboard", error);
     }
@@ -174,7 +174,7 @@ function AdminDashboard() {
         </div>
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold mb-3">Complaints Management (Phase 7)</h2>
+          <h2 className="font-semibold mb-3">Complaints Management (Phase 9)</h2>
           <div className="flex flex-wrap gap-2 mb-3">
             <button onClick={handleExportCsv} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Export CSV</button>
             <button onClick={selectAllVisibleComplaints} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Select / Unselect Visible</button>
@@ -200,7 +200,7 @@ function AdminDashboard() {
             <button onClick={handleBulkApply} className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Apply Bulk</button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-8 gap-2 mb-3 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-10 gap-2 mb-3 text-center">
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Open</p><p className="font-semibold">{complaintMetrics.open}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">In Progress</p><p className="font-semibold">{complaintMetrics.inProgress}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Resolved</p><p className="font-semibold">{complaintMetrics.resolved}</p></div>
@@ -209,6 +209,8 @@ function AdminDashboard() {
             <div className="border rounded p-2"><p className="text-xs text-red-600">Overdue</p><p className="font-semibold text-red-700">{complaintMetrics.overdue}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">High Priority</p><p className="font-semibold">{complaintMetrics?.byPriority?.high || 0}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Avg Resolution (hrs)</p><p className="font-semibold">{complaintMetrics?.avgResolutionHours || 0}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-indigo-600">Waiting on Admin</p><p className="font-semibold text-indigo-700">{complaintMetrics?.waitingOnAdmin || 0}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-teal-600">Waiting on User</p><p className="font-semibold text-teal-700">{complaintMetrics?.waitingOnUser || 0}</p></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">

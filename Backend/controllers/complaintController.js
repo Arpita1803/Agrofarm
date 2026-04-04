@@ -75,6 +75,9 @@ export const createComplaint = async (req, res) => {
           createdAt: new Date(),
         },
       ],
+      lastMessageAt: new Date(),
+      lastUserMessageAt: req.user.role === "admin" ? null : new Date(),
+      lastAdminMessageAt: req.user.role === "admin" ? new Date() : null,
     });
 
     return res.status(201).json(complaint);
@@ -234,7 +237,7 @@ export const getComplaintMetricsForAdmin = async (req, res) => {
     }
 
     const now = new Date();
-    const [open, inProgress, resolved, rejected, escalated, overdue, lowPriority, mediumPriority, highPriority, resolvedRecords] = await Promise.all([
+    const [open, inProgress, resolved, rejected, escalated, overdue, lowPriority, mediumPriority, highPriority, resolvedRecords, activeComplaints] = await Promise.all([
       Complaint.countDocuments({ status: "open" }),
       Complaint.countDocuments({ status: "in_progress" }),
       Complaint.countDocuments({ status: "resolved" }),
@@ -248,7 +251,20 @@ export const getComplaintMetricsForAdmin = async (req, res) => {
       Complaint.countDocuments({ priority: "medium" }),
       Complaint.countDocuments({ priority: "high" }),
       Complaint.find({ resolvedAt: { $ne: null } }).select("createdAt resolvedAt").limit(500),
+      Complaint.find({ status: { $in: ["open", "in_progress"] } }).select("lastUserMessageAt lastAdminMessageAt"),
     ]);
+
+    const waitingOnAdmin = activeComplaints.filter((c) => {
+      const userTs = c.lastUserMessageAt ? new Date(c.lastUserMessageAt).getTime() : 0;
+      const adminTs = c.lastAdminMessageAt ? new Date(c.lastAdminMessageAt).getTime() : 0;
+      return userTs > adminTs;
+    }).length;
+
+    const waitingOnUser = activeComplaints.filter((c) => {
+      const userTs = c.lastUserMessageAt ? new Date(c.lastUserMessageAt).getTime() : 0;
+      const adminTs = c.lastAdminMessageAt ? new Date(c.lastAdminMessageAt).getTime() : 0;
+      return adminTs > userTs;
+    }).length;
     const resolutionHours = resolvedRecords
       .map((r) => (new Date(r.resolvedAt).getTime() - new Date(r.createdAt).getTime()) / (1000 * 60 * 60))
       .filter((v) => Number.isFinite(v) && v >= 0);
@@ -269,6 +285,8 @@ export const getComplaintMetricsForAdmin = async (req, res) => {
         high: highPriority,
       },
       avgResolutionHours,
+      waitingOnAdmin,
+      waitingOnUser,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -467,6 +485,14 @@ export const addComplaintMessage = async (req, res) => {
       isInternal: internal,
       createdAt: new Date(),
     });
+
+    const now = new Date();
+    complaint.lastMessageAt = now;
+    if (req.user.role === "admin") {
+      complaint.lastAdminMessageAt = now;
+    } else {
+      complaint.lastUserMessageAt = now;
+    }
 
     await complaint.save();
     return res.status(201).json({ message: "Comment added" });

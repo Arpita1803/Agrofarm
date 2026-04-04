@@ -155,6 +155,21 @@ const complaintSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    lastMessageAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastUserMessageAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastAdminMessageAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
