@@ -42,3 +42,13 @@ export const updateComplaintByAdmin = async (complaintId, payload) => {
   const res = await API.patch(`/complaints/admin/${complaintId}`, payload);
   return res.data;
 };
+
+export const bulkUpdateAdminComplaints = async (payload) => {
+  const res = await API.post("/complaints/admin/bulk-update", payload);
+  return res.data;
+};
+
+export const exportAdminComplaintsCsv = async () => {
+  const res = await API.get("/complaints/admin/export", { responseType: "blob" });
+  return res.data;
+};

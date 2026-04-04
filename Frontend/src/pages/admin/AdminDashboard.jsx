@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAdminDashboard } from "../../services/adminApi";
-import { fetchAdminComplaints, fetchComplaintMetrics, updateComplaintByAdmin } from "../../services/complaintApi";
+import { bulkUpdateAdminComplaints, exportAdminComplaintsCsv, fetchAdminComplaints, fetchComplaintMetrics, updateComplaintByAdmin } from "../../services/complaintApi";
 import { fetchAdminReviews, moderateReviewByAdmin } from "../../services/reviewApi";
 import { getCurrentUser } from "../../utils/roleGuard";
 
@@ -13,6 +13,8 @@ function AdminDashboard() {
   const [reviewFilter, setReviewFilter] = useState("all");
   const [complaintFilters, setComplaintFilters] = useState({ status: "all", type: "all", priority: "all", q: "" });
   const [complaintMetrics, setComplaintMetrics] = useState({ open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0 });
+  const [selectedComplaintIds, setSelectedComplaintIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState({ status: "", priority: "", assignToMe: true, adminNote: "" });
 
   const loadDashboard = async () => {
     try {
@@ -25,6 +27,7 @@ function AdminDashboard() {
       const safe = dashboard || { summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] };
       setData(safe);
       setComplaints(Array.isArray(complaintList) ? complaintList : []);
+      setSelectedComplaintIds([]);
       setReviews(Array.isArray(reviewList) ? reviewList : []);
       setComplaintMetrics(metrics || { open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0 });
     } catch (error) {
@@ -78,6 +81,48 @@ function AdminDashboard() {
     }
   };
 
+  const toggleComplaintSelection = (id) => {
+    setSelectedComplaintIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleBulkApply = async () => {
+    if (selectedComplaintIds.length === 0) {
+      alert("Select at least one complaint");
+      return;
+    }
+    if (!bulkAction.status && !bulkAction.priority && !bulkAction.adminNote && !bulkAction.assignToMe) {
+      alert("Choose at least one bulk action field");
+      return;
+    }
+    try {
+      await bulkUpdateAdminComplaints({
+        ids: selectedComplaintIds,
+        status: bulkAction.status || undefined,
+        priority: bulkAction.priority || undefined,
+        assignToMe: bulkAction.assignToMe,
+        adminNote: bulkAction.adminNote || undefined,
+      });
+      setBulkAction({ status: "", priority: "", assignToMe: true, adminNote: "" });
+      await loadDashboard();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Bulk update failed");
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const blob = await exportAdminComplaintsCsv();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `complaints-export-${Date.now()}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to export complaints CSV");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -103,7 +148,31 @@ function AdminDashboard() {
         </div>
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold mb-3">Complaints Management (Phase 6)</h2>
+          <h2 className="font-semibold mb-3">Complaints Management (Phase 7)</h2>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button onClick={handleExportCsv} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Export CSV</button>
+            <span className="text-xs text-gray-500 self-center">Selected: {selectedComplaintIds.length}</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3 p-2 border rounded-lg bg-gray-50">
+            <select value={bulkAction.status} onChange={(e) => setBulkAction((p) => ({ ...p, status: e.target.value }))} className="border rounded p-2 text-sm">
+              <option value="">Bulk status</option>
+              <option value="open">open</option>
+              <option value="in_progress">in_progress</option>
+              <option value="resolved">resolved</option>
+              <option value="rejected">rejected</option>
+            </select>
+            <select value={bulkAction.priority} onChange={(e) => setBulkAction((p) => ({ ...p, priority: e.target.value }))} className="border rounded p-2 text-sm">
+              <option value="">Bulk priority</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+            <input value={bulkAction.adminNote} onChange={(e) => setBulkAction((p) => ({ ...p, adminNote: e.target.value }))} placeholder="Bulk admin note" className="border rounded p-2 text-sm" />
+            <label className="text-sm flex items-center gap-2 px-2"><input type="checkbox" checked={bulkAction.assignToMe} onChange={(e) => setBulkAction((p) => ({ ...p, assignToMe: e.target.checked }))} />Assign to me</label>
+            <button onClick={handleBulkApply} className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Apply Bulk</button>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-8 gap-2 mb-3 text-center">
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Open</p><p className="font-semibold">{complaintMetrics.open}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">In Progress</p><p className="font-semibold">{complaintMetrics.inProgress}</p></div>
@@ -141,7 +210,10 @@ function AdminDashboard() {
             {complaints.map((item) => (
               <div key={item._id} className={`border rounded-lg p-3 text-sm ${item.isOverdue ? "border-red-300 bg-red-50" : ""}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{item.title} <span className="text-xs text-gray-500">({item.trackingId})</span></p>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={selectedComplaintIds.includes(item._id)} onChange={() => toggleComplaintSelection(item._id)} />
+                    <p className="font-medium">{item.title} <span className="text-xs text-gray-500">({item.trackingId})</span></p>
+                  </div>
                   <select
                     value={item.status}
                     onChange={(e) => handleComplaintStatus(item._id, e.target.value)}

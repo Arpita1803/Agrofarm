@@ -265,3 +265,118 @@ export const getComplaintMetricsForAdmin = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+export const bulkUpdateComplaintsByAdmin = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admin can bulk update complaints" });
+    }
+
+    const { ids, status, priority, assignToMe = false, adminNote } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "ids must be a non-empty array" });
+    }
+
+    if (status && !["open", "in_progress", "resolved", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    if (priority && !["low", "medium", "high"].includes(priority)) {
+      return res.status(400).json({ message: "Invalid priority" });
+    }
+
+    const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const complaints = await Complaint.find({ _id: { $in: objectIds } });
+
+    let updated = 0;
+    for (const complaint of complaints) {
+      let changed = false;
+
+      if (status && complaint.status !== status) {
+        complaint.status = status;
+        changed = true;
+      }
+
+      if (priority && complaint.priority !== priority) {
+        complaint.priority = priority;
+        if (!["resolved", "rejected"].includes(complaint.status)) {
+          complaint.dueAt = getDueDateForPriority(priority);
+        }
+        changed = true;
+      }
+
+      if (typeof adminNote !== "undefined" && String(complaint.adminNote || "") !== String(adminNote || "")) {
+        complaint.adminNote = String(adminNote || "");
+        changed = true;
+      }
+
+      if (assignToMe) {
+        complaint.assignedAdminId = req.user.id;
+        changed = true;
+      }
+
+      if (status === "resolved") {
+        complaint.resolvedAt = new Date();
+        complaint.rejectionReason = "";
+      }
+      if (status && !["resolved", "rejected"].includes(status)) {
+        complaint.resolvedAt = null;
+        complaint.rejectionReason = "";
+      }
+
+      const now = Date.now();
+      const overdue = complaint.dueAt ? new Date(complaint.dueAt).getTime() < now : false;
+      complaint.escalated = overdue && !["resolved", "rejected"].includes(complaint.status);
+      complaint.escalationLevel = complaint.escalated ? Math.min((complaint.escalationLevel || 0) + 1, 3) : 0;
+
+      if (changed) {
+        complaint.history = Array.isArray(complaint.history) ? complaint.history : [];
+        complaint.history.push({
+          status: complaint.status,
+          priority: complaint.priority,
+          note: complaint.adminNote || "Bulk updated by admin",
+          changedByRole: "admin",
+          changedByUserId: req.user.id,
+          changedAt: new Date(),
+        });
+        await complaint.save();
+        updated += 1;
+      }
+    }
+
+    return res.json({ updated, requested: ids.length });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const exportComplaintsCsvForAdmin = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admin can export complaints" });
+    }
+
+    const complaints = await Complaint.find().sort({ createdAt: -1 }).limit(2000).populate("raisedByUserId", "name email role").populate("assignedAdminId", "name email");
+    const header = ["trackingId", "title", "type", "status", "priority", "raisedBy", "assignedAdmin", "dueAt", "resolvedAt", "escalated", "escalationLevel", "createdAt"];
+    const rows = complaints.map((c) => [
+      c.trackingId || "",
+      (c.title || "").replaceAll(",", " "),
+      c.type || "",
+      c.status || "",
+      c.priority || "",
+      c?.raisedByUserId?.email || "",
+      c?.assignedAdminId?.email || "",
+      c.dueAt ? new Date(c.dueAt).toISOString() : "",
+      c.resolvedAt ? new Date(c.resolvedAt).toISOString() : "",
+      String(Boolean(c.escalated)),
+      String(c.escalationLevel || 0),
+      c.createdAt ? new Date(c.createdAt).toISOString() : "",
+    ]);
+    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=complaints-${Date.now()}.csv`);
+    return res.status(200).send(csv);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
