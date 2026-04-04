@@ -20,8 +20,16 @@ export const fetchMyComplaints = async () => {
   return res.data;
 };
 
-export const fetchAdminComplaints = async () => {
-  const res = await API.get("/complaints/admin/all");
+export const fetchAdminComplaints = async (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      params.append(key, value);
+    }
+  });
+
+  const query = params.toString();
+  const res = await API.get(`/complaints/admin/all${query ? `?${query}` : ""}`);
   return res.data;
 };
 

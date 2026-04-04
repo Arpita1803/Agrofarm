@@ -11,16 +11,18 @@ function AdminDashboard() {
   const [complaints, setComplaints] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [reviewFilter, setReviewFilter] = useState("all");
+  const [complaintFilters, setComplaintFilters] = useState({ status: "all", type: "all", priority: "all", q: "" });
 
   const loadDashboard = async () => {
     try {
-      const [dashboard, reviewList] = await Promise.all([
+      const [dashboard, reviewList, complaintList] = await Promise.all([
         fetchAdminDashboard(),
         fetchAdminReviews(reviewFilter),
+        fetchAdminComplaints(complaintFilters),
       ]);
       const safe = dashboard || { summary: {}, users: [], ads: [], orders: [], complaintCount: 0, complaints: [] };
       setData(safe);
-      setComplaints(Array.isArray(safe.complaints) ? safe.complaints : []);
+      setComplaints(Array.isArray(complaintList) ? complaintList : []);
       setReviews(Array.isArray(reviewList) ? reviewList : []);
     } catch (error) {
       console.error("Failed to load admin dashboard", error);
@@ -35,11 +37,20 @@ function AdminDashboard() {
     }
 
     loadDashboard();
-  }, [navigate, reviewFilter]);
+  }, [navigate, reviewFilter, complaintFilters]);
 
   const handleComplaintStatus = async (id, status) => {
     try {
       await updateComplaintByAdmin(id, { status });
+      await loadDashboard();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to update complaint");
+    }
+  };
+
+  const handleComplaintQuickUpdate = async (id, payload) => {
+    try {
+      await updateComplaintByAdmin(id, payload);
       await loadDashboard();
     } catch (error) {
       alert(error?.response?.data?.message || "Failed to update complaint");
@@ -90,11 +101,33 @@ function AdminDashboard() {
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
           <h2 className="font-semibold mb-3">Complaints Management (Phase 1)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+            <select value={complaintFilters.status} onChange={(e) => setComplaintFilters((p) => ({ ...p, status: e.target.value }))} className="border rounded p-2 text-sm">
+              <option value="all">All status</option>
+              <option value="open">open</option>
+              <option value="in_progress">in_progress</option>
+              <option value="resolved">resolved</option>
+              <option value="rejected">rejected</option>
+            </select>
+            <select value={complaintFilters.type} onChange={(e) => setComplaintFilters((p) => ({ ...p, type: e.target.value }))} className="border rounded p-2 text-sm">
+              <option value="all">All type</option>
+              <option value="order_related">order_related</option>
+              <option value="website_related">website_related</option>
+            </select>
+            <select value={complaintFilters.priority} onChange={(e) => setComplaintFilters((p) => ({ ...p, priority: e.target.value }))} className="border rounded p-2 text-sm">
+              <option value="all">All priority</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+            <input value={complaintFilters.q} onChange={(e) => setComplaintFilters((p) => ({ ...p, q: e.target.value }))} placeholder="Search tracking/title" className="border rounded p-2 text-sm" />
+          </div>
+
           <div className="max-h-80 overflow-auto space-y-2">
             {complaints.map((item) => (
               <div key={item._id} className="border rounded-lg p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{item.title}</p>
+                  <p className="font-medium">{item.title} <span className="text-xs text-gray-500">({item.trackingId})</span></p>
                   <select
                     value={item.status}
                     onChange={(e) => handleComplaintStatus(item._id, e.target.value)}
@@ -110,6 +143,24 @@ function AdminDashboard() {
                 <p className="text-gray-700 mt-1">{item.description}</p>
                 <p className="text-gray-500 mt-1">Raised by: {item?.raisedByUserId?.name || "Unknown"} ({item.raisedByRole})</p>
                 {item.orderId && <p className="text-gray-500">Order Ref: {item.orderId?._id || item.orderId} • {item.orderId?.product || "Order"} ({item.orderId?.status || ""})</p>}
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <select
+                    value={item.priority}
+                    onChange={(e) => handleComplaintQuickUpdate(item._id, { priority: e.target.value })}
+                    className="border rounded p-1 text-xs"
+                  >
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                  </select>
+                  <input
+                    defaultValue={item.adminNote || ""}
+                    placeholder="Admin note"
+                    onBlur={(e) => handleComplaintQuickUpdate(item._id, { adminNote: e.target.value })}
+                    className="border rounded p-1 text-xs"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">History events: {item?.history?.length || 0}</p>
               </div>
             ))}
             {complaints.length === 0 && <p className="text-sm text-gray-500">No complaints yet.</p>}

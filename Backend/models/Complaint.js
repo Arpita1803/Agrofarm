@@ -2,6 +2,14 @@ import mongoose from "mongoose";
 
 const complaintSchema = new mongoose.Schema(
   {
+    trackingId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      uppercase: true,
+      trim: true,
+    },
     raisedByUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -46,6 +54,42 @@ const complaintSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    history: {
+      type: [
+        {
+          status: {
+            type: String,
+            enum: ["open", "in_progress", "resolved", "rejected"],
+            required: true,
+          },
+          priority: {
+            type: String,
+            enum: ["low", "medium", "high"],
+            default: "medium",
+          },
+          note: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+          changedByRole: {
+            type: String,
+            enum: ["farmer", "dealer", "admin"],
+            required: true,
+          },
+          changedByUserId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          changedAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
     },
   },
   { timestamps: true }
