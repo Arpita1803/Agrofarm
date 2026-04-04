@@ -65,11 +65,26 @@ function AdminDashboard() {
 
   const refreshComplaintsOnly = async () => {
     try {
-      const list = await fetchAdminComplaints();
+      const [list, metrics] = await Promise.all([
+        fetchAdminComplaints(complaintFilters),
+        fetchComplaintMetrics(),
+      ]);
       setComplaints(Array.isArray(list) ? list : []);
+      setComplaintMetrics(metrics || complaintMetrics);
     } catch (error) {
       console.error("Failed to refresh complaints", error);
     }
+  };
+
+  const selectAllVisibleComplaints = () => {
+    setSelectedComplaintIds((prev) => {
+      const visibleIds = complaints.map((c) => c._id);
+      const allSelected = visibleIds.every((id) => prev.includes(id));
+      if (allSelected) {
+        return prev.filter((id) => !visibleIds.includes(id));
+      }
+      return Array.from(new Set([...prev, ...visibleIds]));
+    });
   };
 
   const handleReviewModeration = async (id, moderationStatus) => {
@@ -101,6 +116,7 @@ function AdminDashboard() {
         priority: bulkAction.priority || undefined,
         assignToMe: bulkAction.assignToMe,
         adminNote: bulkAction.adminNote || undefined,
+        rejectionReason: bulkAction.status === "rejected" ? (bulkAction.adminNote || "Rejected by admin") : undefined,
       });
       setBulkAction({ status: "", priority: "", assignToMe: true, adminNote: "" });
       await loadDashboard();
@@ -151,6 +167,7 @@ function AdminDashboard() {
           <h2 className="font-semibold mb-3">Complaints Management (Phase 7)</h2>
           <div className="flex flex-wrap gap-2 mb-3">
             <button onClick={handleExportCsv} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Export CSV</button>
+            <button onClick={selectAllVisibleComplaints} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Select / Unselect Visible</button>
             <span className="text-xs text-gray-500 self-center">Selected: {selectedComplaintIds.length}</span>
           </div>
 

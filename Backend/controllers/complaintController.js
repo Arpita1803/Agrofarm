@@ -272,7 +272,7 @@ export const bulkUpdateComplaintsByAdmin = async (req, res) => {
       return res.status(403).json({ message: "Only admin can bulk update complaints" });
     }
 
-    const { ids, status, priority, assignToMe = false, adminNote } = req.body;
+    const { ids, status, priority, assignToMe = false, adminNote, rejectionReason } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ message: "ids must be a non-empty array" });
     }
@@ -282,6 +282,9 @@ export const bulkUpdateComplaintsByAdmin = async (req, res) => {
     }
     if (priority && !["low", "medium", "high"].includes(priority)) {
       return res.status(400).json({ message: "Invalid priority" });
+    }
+    if (status === "rejected" && !String(rejectionReason || "").trim()) {
+      return res.status(400).json({ message: "rejectionReason is required when bulk rejecting complaints" });
     }
 
     const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
@@ -317,6 +320,10 @@ export const bulkUpdateComplaintsByAdmin = async (req, res) => {
       if (status === "resolved") {
         complaint.resolvedAt = new Date();
         complaint.rejectionReason = "";
+      }
+      if (status === "rejected") {
+        complaint.resolvedAt = new Date();
+        complaint.rejectionReason = String(rejectionReason || "").trim();
       }
       if (status && !["resolved", "rejected"].includes(status)) {
         complaint.resolvedAt = null;
@@ -356,10 +363,15 @@ export const exportComplaintsCsvForAdmin = async (req, res) => {
     }
 
     const complaints = await Complaint.find().sort({ createdAt: -1 }).limit(2000).populate("raisedByUserId", "name email role").populate("assignedAdminId", "name email");
+    const escapeCsv = (value) => {
+      const str = String(value ?? "");
+      return `"${str.replaceAll('"', '""')}"`;
+    };
+
     const header = ["trackingId", "title", "type", "status", "priority", "raisedBy", "assignedAdmin", "dueAt", "resolvedAt", "escalated", "escalationLevel", "createdAt"];
     const rows = complaints.map((c) => [
       c.trackingId || "",
-      (c.title || "").replaceAll(",", " "),
+      c.title || "",
       c.type || "",
       c.status || "",
       c.priority || "",
@@ -371,7 +383,7 @@ export const exportComplaintsCsvForAdmin = async (req, res) => {
       String(c.escalationLevel || 0),
       c.createdAt ? new Date(c.createdAt).toISOString() : "",
     ]);
-    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csv = [header.map(escapeCsv).join(","), ...rows.map((r) => r.map(escapeCsv).join(","))].join("\n");
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename=complaints-${Date.now()}.csv`);
