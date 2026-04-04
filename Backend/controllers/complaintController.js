@@ -116,7 +116,8 @@ export const getAllComplaintsForAdmin = async (req, res) => {
     const complaints = await Complaint.find(filters)
       .sort({ createdAt: -1 })
       .populate("raisedByUserId", "name email role")
-      .populate("orderId", "product dealerName farmerName status");
+      .populate("orderId", "product dealerName farmerName status")
+      .populate("assignedAdminId", "name email");
     const now = Date.now();
     const mapped = complaints.map((c) => ({
       ...c.toObject(),
@@ -136,7 +137,7 @@ export const updateComplaintByAdmin = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { status, priority, adminNote } = req.body;
+    const { status, priority, adminNote, assignToMe, rejectionReason } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid complaint id" });
@@ -155,6 +156,21 @@ export const updateComplaintByAdmin = async (req, res) => {
       }
       if (complaint.status !== status) changed = true;
       complaint.status = status;
+      if (status === "resolved") {
+        complaint.resolvedAt = new Date();
+        complaint.rejectionReason = "";
+      }
+      if (status === "rejected") {
+        if (!String(rejectionReason || "").trim()) {
+          return res.status(400).json({ message: "rejectionReason is required when rejecting a complaint" });
+        }
+        complaint.resolvedAt = new Date();
+        complaint.rejectionReason = String(rejectionReason).trim();
+      }
+      if (!["resolved", "rejected"].includes(status)) {
+        complaint.resolvedAt = null;
+        complaint.rejectionReason = "";
+      }
     }
 
     if (priority) {
@@ -171,6 +187,11 @@ export const updateComplaintByAdmin = async (req, res) => {
     if (adminNote !== undefined) {
       if (String(complaint.adminNote || "") !== String(adminNote || "")) changed = true;
       complaint.adminNote = String(adminNote || "");
+    }
+
+    if (assignToMe === true) {
+      if (String(complaint.assignedAdminId || "") !== String(req.user.id)) changed = true;
+      complaint.assignedAdminId = req.user.id;
     }
 
     if (changed) {
@@ -204,7 +225,7 @@ export const getComplaintMetricsForAdmin = async (req, res) => {
     }
 
     const now = new Date();
-    const [open, inProgress, resolved, rejected, escalated, overdue] = await Promise.all([
+    const [open, inProgress, resolved, rejected, escalated, overdue, lowPriority, mediumPriority, highPriority, resolvedRecords] = await Promise.all([
       Complaint.countDocuments({ status: "open" }),
       Complaint.countDocuments({ status: "in_progress" }),
       Complaint.countDocuments({ status: "resolved" }),
@@ -214,9 +235,32 @@ export const getComplaintMetricsForAdmin = async (req, res) => {
         status: { $in: ["open", "in_progress"] },
         dueAt: { $lt: now },
       }),
+      Complaint.countDocuments({ priority: "low" }),
+      Complaint.countDocuments({ priority: "medium" }),
+      Complaint.countDocuments({ priority: "high" }),
+      Complaint.find({ resolvedAt: { $ne: null } }).select("createdAt resolvedAt").limit(500),
     ]);
+    const resolutionHours = resolvedRecords
+      .map((r) => (new Date(r.resolvedAt).getTime() - new Date(r.createdAt).getTime()) / (1000 * 60 * 60))
+      .filter((v) => Number.isFinite(v) && v >= 0);
+    const avgResolutionHours = resolutionHours.length
+      ? Number((resolutionHours.reduce((sum, h) => sum + h, 0) / resolutionHours.length).toFixed(2))
+      : 0;
 
-    return res.json({ open, inProgress, resolved, rejected, escalated, overdue });
+    return res.json({
+      open,
+      inProgress,
+      resolved,
+      rejected,
+      escalated,
+      overdue,
+      byPriority: {
+        low: lowPriority,
+        medium: mediumPriority,
+        high: highPriority,
+      },
+      avgResolutionHours,
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

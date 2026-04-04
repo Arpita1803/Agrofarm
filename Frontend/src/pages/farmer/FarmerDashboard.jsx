@@ -209,7 +209,7 @@ function FarmerDashboard() {
 
       <section className="mb-5 bg-white border rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">My Complaints (Phase 4)</h3>
+          <h3 className="font-semibold">My Complaints (Phase 6)</h3>
           <span className="text-sm text-gray-500">{myComplaints.length}</span>
         </div>
         <div className="max-h-44 overflow-auto space-y-2">

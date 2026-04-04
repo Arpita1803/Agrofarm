@@ -12,7 +12,7 @@ function AdminDashboard() {
   const [reviews, setReviews] = useState([]);
   const [reviewFilter, setReviewFilter] = useState("all");
   const [complaintFilters, setComplaintFilters] = useState({ status: "all", type: "all", priority: "all", q: "" });
-  const [complaintMetrics, setComplaintMetrics] = useState({ open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0 });
+  const [complaintMetrics, setComplaintMetrics] = useState({ open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0 });
 
   const loadDashboard = async () => {
     try {
@@ -26,7 +26,7 @@ function AdminDashboard() {
       setData(safe);
       setComplaints(Array.isArray(complaintList) ? complaintList : []);
       setReviews(Array.isArray(reviewList) ? reviewList : []);
-      setComplaintMetrics(metrics || { open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0 });
+      setComplaintMetrics(metrics || { open: 0, inProgress: 0, resolved: 0, rejected: 0, escalated: 0, overdue: 0, byPriority: { low: 0, medium: 0, high: 0 }, avgResolutionHours: 0 });
     } catch (error) {
       console.error("Failed to load admin dashboard", error);
     }
@@ -103,14 +103,16 @@ function AdminDashboard() {
         </div>
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold mb-3">Complaints Management (Phase 5)</h2>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3 text-center">
+          <h2 className="font-semibold mb-3">Complaints Management (Phase 6)</h2>
+          <div className="grid grid-cols-2 md:grid-cols-8 gap-2 mb-3 text-center">
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Open</p><p className="font-semibold">{complaintMetrics.open}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">In Progress</p><p className="font-semibold">{complaintMetrics.inProgress}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Resolved</p><p className="font-semibold">{complaintMetrics.resolved}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-gray-500">Rejected</p><p className="font-semibold">{complaintMetrics.rejected}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-amber-600">Escalated</p><p className="font-semibold text-amber-700">{complaintMetrics.escalated}</p></div>
             <div className="border rounded p-2"><p className="text-xs text-red-600">Overdue</p><p className="font-semibold text-red-700">{complaintMetrics.overdue}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-gray-500">High Priority</p><p className="font-semibold">{complaintMetrics?.byPriority?.high || 0}</p></div>
+            <div className="border rounded p-2"><p className="text-xs text-gray-500">Avg Resolution (hrs)</p><p className="font-semibold">{complaintMetrics?.avgResolutionHours || 0}</p></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -153,6 +155,9 @@ function AdminDashboard() {
                 </div>
                 <p className="text-gray-600 mt-1">Type: {item.type} • Priority: {item.priority}</p>
                 <p className="text-gray-600 mt-1">Due: {item?.dueAt ? new Date(item.dueAt).toLocaleString("en-IN") : "N/A"} {item.isOverdue ? "• OVERDUE" : ""}</p>
+                <p className="text-gray-600 mt-1">Assigned admin: {item?.assignedAdminId?.name || "Unassigned"}</p>
+                {item.resolvedAt && <p className="text-gray-600 mt-1">Resolved at: {new Date(item.resolvedAt).toLocaleString("en-IN")}</p>}
+                {item.rejectionReason && <p className="text-red-700 mt-1">Rejection reason: {item.rejectionReason}</p>}
                 <p className="text-gray-700 mt-1">{item.description}</p>
                 <p className="text-gray-500 mt-1">Raised by: {item?.raisedByUserId?.name || "Unknown"} ({item.raisedByRole})</p>
                 {item.orderId && <p className="text-gray-500">Order Ref: {item.orderId?._id || item.orderId} • {item.orderId?.product || "Order"} ({item.orderId?.status || ""})</p>}
@@ -172,6 +177,22 @@ function AdminDashboard() {
                     onBlur={(e) => handleComplaintQuickUpdate(item._id, { adminNote: e.target.value })}
                     className="border rounded p-1 text-xs"
                   />
+                </div>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleComplaintQuickUpdate(item._id, { assignToMe: true })}
+                    className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                  >
+                    Assign to me
+                  </button>
+                  {item.status === "rejected" && (
+                    <input
+                      defaultValue={item.rejectionReason || ""}
+                      placeholder="Rejection reason"
+                      onBlur={(e) => handleComplaintQuickUpdate(item._id, { status: "rejected", rejectionReason: e.target.value })}
+                      className="border rounded p-1 text-xs"
+                    />
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">History events: {item?.history?.length || 0} • Escalation: L{item?.escalationLevel || 0}</p>
               </div>

@@ -107,6 +107,23 @@ const complaintSchema = new mongoose.Schema(
       min: 0,
       max: 3,
     },
+    assignedAdminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    resolvedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    rejectionReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
   },
   { timestamps: true }
 );
