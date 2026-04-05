@@ -61,13 +61,13 @@ def validate_payload(payload):
         return "Invalid JSON payload"
 
     crop = str(payload.get("crop", "")).strip().lower()
-    district = str(payload.get("district", "")).strip().lower()
+    state = str(payload.get("state", "")).strip().lower()
     month_raw = payload.get("month")
 
     if not crop:
         return "crop is required"
-    if not district:
-        return "district is required"
+    if not state:
+        return "state is required"
 
     try:
         month = int(month_raw)
@@ -103,31 +103,18 @@ def predict_price():
         return jsonify({"error": error}), 400
 
     crop = str(data["crop"]).strip().lower()
-    district = str(data["district"]).strip().lower()
+    state = str(data["state"]).strip().lower()
     month = int(data["month"])
 
-    # Level 1: exact crop + district + month
+    # Level 1: exact crop + state + month
     filtered = df[
         (df["crop"] == crop)
-        & (df["district"] == district)
+        & (df["state"] == state)
         & (df["month"] == month)
     ]
-    source_level = "district"
+    source_level = "state"
 
-    # Level 2: state fallback for same crop + month
-    if len(filtered) < 2 and "state" in df.columns:
-        states = df.loc[df["district"] == district, "state"].dropna().unique().tolist()
-        if states:
-            state_filtered = df[
-                (df["crop"] == crop)
-                & (df["state"].isin(states))
-                & (df["month"] == month)
-            ]
-            if len(state_filtered) >= 2:
-                filtered = state_filtered
-                source_level = "state"
-
-    # Level 3: global fallback for same crop + month
+    # Level 2: global fallback for same crop + month
     if len(filtered) < 2:
         global_filtered = df[(df["crop"] == crop) & (df["month"] == month)]
         if len(global_filtered) >= 2:
@@ -137,7 +124,7 @@ def predict_price():
     if len(filtered) < 2:
         return jsonify(
             {
-                "error": "Not enough data for this crop+district+month",
+                "error": "Not enough data for this crop+state+month",
                 "required_min_samples": 2,
                 "found_samples": int(len(filtered)),
             }
@@ -154,7 +141,7 @@ def predict_price():
             "source_level": source_level,
             "input": {
                 "crop": crop,
-                "district": district,
+                "state": state,
                 "month": month,
             },
         }

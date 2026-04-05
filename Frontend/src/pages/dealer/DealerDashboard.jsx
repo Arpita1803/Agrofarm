@@ -4,6 +4,7 @@ import RequestForm from '../../components/dealer/RequestForm';
 import { fetchRequests } from '../../services/requestApi';
 import { fetchMyOrders } from '../../services/orderApi';
 import { fetchMyChats } from '../../services/chatApi';
+import { fetchMyReviewSummary } from '../../services/reviewApi';
 import { getCurrentUser } from '../../utils/roleGuard';
 
 const categories = [
@@ -163,6 +164,8 @@ function DealerDashboard() {
     activeOrders: 0,
     chats: 0,
     unreadChats: 0,
+    avgRating: '0.00',
+    totalReviews: 0,
   });
 
   useEffect(() => {
@@ -174,10 +177,11 @@ function DealerDashboard() {
       }
 
       try {
-        const [requests, orders, chats] = await Promise.all([
+        const [requests, orders, chats, reviewSummary] = await Promise.all([
           fetchRequests(),
           fetchMyOrders(),
           fetchMyChats(),
+          fetchMyReviewSummary(),
         ]);
 
         const myOpenRequests = Array.isArray(requests)
@@ -198,6 +202,8 @@ function DealerDashboard() {
           activeOrders,
           chats: chatCount,
           unreadChats,
+          avgRating: reviewSummary?.avgRating || '0.00',
+          totalReviews: reviewSummary?.totalReviews || 0,
         });
       } catch (error) {
         console.error('Failed to load dealer dashboard stats', error);
@@ -327,7 +333,7 @@ function DealerDashboard() {
           Welcome back 👋
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white border rounded-xl p-4 shadow-sm">
             <p className="text-sm text-gray-600">My Open Requests</p>
             <p className="text-2xl font-bold text-gray-900">{stats.myOpenRequests}</p>
@@ -339,6 +345,11 @@ function DealerDashboard() {
           <div className="bg-white border rounded-xl p-4 shadow-sm">
             <p className="text-sm text-gray-600">My Chats</p>
             <p className="text-2xl font-bold text-gray-900">{stats.chats}</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4 shadow-sm">
+            <p className="text-sm text-gray-600">My Rating</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.avgRating}/10</p>
+            <p className="text-xs text-gray-500">{stats.totalReviews} reviews</p>
           </div>
         </div>
 

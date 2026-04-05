@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ORDER_STATUSES } from "../constants/orderStatus.js";
 
 const statusHistorySchema = new mongoose.Schema(
   {
@@ -78,17 +79,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: [
-        "placed",
-        "packed",
-        "ready_for_delivery",
-        "shipped",
-        "out_for_delivery",
-        "delivered",
-        "out_for_pickup",
-        "picked",
-        "cancelled",
-      ],
+      enum: ORDER_STATUSES,
       default: "placed",
     },
     statusHistory: [statusHistorySchema],

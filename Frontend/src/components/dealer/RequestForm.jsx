@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRequest } from "../../services/requestApi";
+import { fetchMspByProduct, fetchMspCatalog } from "../../services/mspApi";
+import { resolveMspProductFromCatalog } from "../../utils/mspProduct";
 
 function RequestForm({ product, onClose }) {
   const [formData, setFormData] = useState({
@@ -12,6 +14,46 @@ function RequestForm({ product, onClose }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [mspInfo, setMspInfo] = useState({ loading: true, price: null, error: "", required: false });
+
+  const normalizedProduct = useMemo(() => String(product.name || "").trim().toLowerCase(), [product.name]);
+
+  useEffect(() => {
+    const loadMsp = async () => {
+      try {
+        setMspInfo({ loading: true, price: null, error: "", required: false });
+        const catalogData = await fetchMspCatalog();
+        const catalog = Array.isArray(catalogData) ? catalogData : [];
+        const catalogItem = resolveMspProductFromCatalog(normalizedProduct, catalog);
+
+        if (!catalogItem) {
+          setMspInfo({ loading: false, price: null, error: "MSP not applicable for this product", required: false });
+          return;
+        }
+
+        try {
+          const data = await fetchMspByProduct(catalogItem.product);
+          setMspInfo({ loading: false, price: Number(data?.price), error: "", required: true });
+        } catch {
+          setMspInfo({
+            loading: false,
+            price: Number(catalogItem.price),
+            error: "",
+            required: true,
+          });
+        }
+      } catch (error) {
+        setMspInfo({
+          loading: false,
+          price: null,
+          error: error?.response?.data?.message || "MSP not configured for this product",
+          required: true,
+        });
+      }
+    };
+
+    loadMsp();
+  }, [product.name, normalizedProduct]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -20,6 +62,12 @@ function RequestForm({ product, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const minPrice = Number(formData.minPrice);
+    if (mspInfo.required && Number.isFinite(mspInfo.price) && minPrice <= mspInfo.price) {
+      alert(`Min price must be greater than MSP (₹${mspInfo.price})`);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -27,7 +75,7 @@ function RequestForm({ product, onClose }) {
         product: product.name,
         productImage: product.image,
         quantity: Number(formData.quantity),
-        minPrice: Number(formData.minPrice),
+        minPrice,
         maxPrice: Number(formData.maxPrice),
         location: "India",
         requiredDate: formData.requiredDate || undefined,
@@ -38,7 +86,7 @@ function RequestForm({ product, onClose }) {
       alert("Request posted successfully");
       onClose();
     } catch (error) {
-      alert("Request failed. Check console.");
+      alert(error?.response?.data?.message || "Request failed. Check console.");
       console.error(error);
     } finally {
       setLoading(false);
@@ -47,60 +95,37 @@ function RequestForm({ product, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg w-96 space-y-4">
-        <h2 className="text-xl font-bold">{product.name} Request</h2>
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4">
+        <h2 className="text-xl font-bold text-gray-800">Request for {product.name}</h2>
+        <p className="text-sm text-gray-500">Set your buying range (per kg).</p>
 
-        <input
-          name="quantity"
-          placeholder="Quantity (kg)"
-          onChange={handleChange}
-          className="w-full border p-2"
-          required
-        />
-
-        <div className="flex gap-2">
-          <input
-            name="minPrice"
-            placeholder="Min Price"
-            onChange={handleChange}
-            className="w-full border p-2"
-            required
-          />
-          <input
-            name="maxPrice"
-            placeholder="Max Price"
-            onChange={handleChange}
-            className="w-full border p-2"
-            required
-          />
+        <div className="text-sm rounded-lg px-3 py-2 border bg-gray-50">
+          {mspInfo.loading && <span className="text-gray-600">Loading MSP...</span>}
+          {!mspInfo.loading && mspInfo.required && mspInfo.price !== null && (
+            <span className="text-green-700 font-medium">MSP for {product.name}: ₹{mspInfo.price} (min price must be above this)</span>
+          )}
+          {!mspInfo.loading && mspInfo.required && mspInfo.price === null && (
+            <span className="text-red-600">{mspInfo.error}</span>
+          )}
+          {!mspInfo.loading && !mspInfo.required && (
+            <span className="text-gray-600">MSP catalog has 23 crops; this product is outside current MSP list.</span>
+          )}
         </div>
 
-        <input
-          name="requiredDate"
-          type="date"
-          onChange={handleChange}
-          className="w-full border p-2"
-        />
+        <input type="number" name="quantity" placeholder="Quantity (kg)" value={formData.quantity} onChange={handleChange} className="w-full border rounded-lg p-2" required />
+        <input type="number" name="minPrice" placeholder="Min Price" value={formData.minPrice} onChange={handleChange} className="w-full border rounded-lg p-2" required />
+        <input type="number" name="maxPrice" placeholder="Max Price" value={formData.maxPrice} onChange={handleChange} className="w-full border rounded-lg p-2" required />
+        <input type="date" name="requiredDate" value={formData.requiredDate} onChange={handleChange} className="w-full border rounded-lg p-2" />
+        <input type="text" name="mobile" placeholder="Mobile number" value={formData.mobile} onChange={handleChange} className="w-full border rounded-lg p-2" />
+        <textarea name="notes" placeholder="Additional notes" value={formData.notes} onChange={handleChange} className="w-full border rounded-lg p-2" rows="3" />
 
-        <input
-          name="mobile"
-          placeholder="Mobile number"
-          onChange={handleChange}
-          className="w-full border p-2"
-        />
-
-        <textarea
-          name="notes"
-          placeholder="Additional notes"
-          onChange={handleChange}
-          className="w-full border p-2"
-        />
-
-        <div className="flex gap-2">
-          <button type="button" onClick={onClose} className="w-1/2 border p-2">
-            Cancel
-          </button>
-          <button type="submit" disabled={loading} className="w-1/2 bg-green-600 text-white p-2">
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">Cancel</button>
+          <button
+            type="submit"
+            disabled={loading || mspInfo.loading || (mspInfo.required && mspInfo.price === null)}
+            className="px-4 py-2 rounded-lg bg-green-600 text-white disabled:opacity-50"
+          >
             {loading ? "Posting..." : "Post Request"}
           </button>
         </div>

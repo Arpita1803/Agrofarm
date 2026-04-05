@@ -1,4 +1,14 @@
+import mongoose from "mongoose";
 import Order from "../models/Order.js";
+import {
+  FARMER_CANCELLABLE_STATUSES,
+  ORDER_STATUSES,
+  ORDER_STATUS_FLOW_BY_DELIVERY_MODE,
+} from "../constants/orderStatus.js";
+
+const getStatusFlow = (deliveryMode) => {
+  return ORDER_STATUS_FLOW_BY_DELIVERY_MODE[deliveryMode] || ORDER_STATUS_FLOW_BY_DELIVERY_MODE.farmer_delivery;
+};
 
 export const getMyOrders = async (req, res) => {
   try {
@@ -32,8 +42,11 @@ export const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ["pending", "accepted", "processing", "shipped", "delivered", "cancelled"];
-    if (!allowedStatuses.includes(status)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid order id" });
+    }
+
+    if (!ORDER_STATUSES.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
@@ -49,16 +62,41 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(403).json({ message: "Not authorized for this order" });
     }
 
+    if (status === order.status) {
+      return res.status(400).json({ message: "Order is already in this status" });
+    }
+
+    const statusFlow = getStatusFlow(order.deliveryMode);
+    const currentIndex = statusFlow.indexOf(order.status);
+    const nextStatus = currentIndex >= 0 ? statusFlow[currentIndex + 1] : null;
+
     if (isFarmer) {
-      if (status !== "cancelled") {
-        return res.status(403).json({ message: "Farmer can only cancel orders" });
+      if (status === "cancelled") {
+        if (!FARMER_CANCELLABLE_STATUSES.includes(order.status)) {
+          return res.status(400).json({ message: "Order can no longer be cancelled" });
+        }
+      } else if (status !== nextStatus) {
+        return res.status(403).json({ message: "Farmer can only move order to the next status" });
       }
-      if (!["pending", "accepted"].includes(order.status)) {
-        return res.status(400).json({ message: "Order can no longer be cancelled" });
+    }
+
+    if (isDealer) {
+      if (status === "cancelled") {
+        if (order.status !== "placed") {
+          return res.status(400).json({ message: "Dealer can only cancel newly placed orders" });
+        }
+      } else if (!(status === "delivered" && nextStatus === "delivered")) {
+        return res.status(403).json({ message: "Dealer can only confirm delivered when order is at final step" });
       }
     }
 
     order.status = status;
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      status,
+      updatedByRole: req.user.role,
+      updatedAt: new Date(),
+    });
     await order.save();
 
     return res.json({ message: "Order status updated", order });
