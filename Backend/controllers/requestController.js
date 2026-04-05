@@ -3,7 +3,7 @@ import Request from "../models/Request.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Msp from "../models/Msp.js";
-import { MSP_ALLOWED_PRODUCTS, MSP_CATALOG_2025_26 } from "../constants/mspCatalog.js";
+import { MSP_ALLOWED_PRODUCTS, MSP_CATALOG_2025_26, resolveMspProductName } from "../constants/mspCatalog.js";
 
 // Dealer creates request
 export const createRequest = async (req, res) => {
@@ -24,7 +24,7 @@ export const createRequest = async (req, res) => {
       return res.status(404).json({ message: "Dealer not found" });
     }
 
-    const normalizedProduct = String(product).trim().toLowerCase();
+    const normalizedProduct = resolveMspProductName(product);
     const numericMinPrice = Number(minPrice);
     const numericMaxPrice = Number(maxPrice);
 

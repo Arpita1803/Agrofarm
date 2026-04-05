@@ -2,6 +2,28 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRequest } from "../../services/requestApi";
 import { fetchMspByProduct, fetchMspCatalog } from "../../services/mspApi";
 
+const MSP_PRODUCT_ALIASES = {
+  rice: "paddy common",
+  "corn (maize)": "maize",
+  "toor dal": "tur / arhar",
+  "tur dal": "tur / arhar",
+  "moong dal": "moong",
+  "urad dal": "urad",
+  "masoor dal": "lentil (masur)",
+  chickpeas: "gram (chana)",
+  "mustard seed": "rapeseed & mustard",
+  soybean: "soyabean (yellow)",
+  "sesame (til)": "sesamum",
+  cotton: "cotton medium staple",
+  "jowar (sorghum)": "jowar hybrid",
+  "ragi (finger millet)": "ragi",
+};
+
+const resolveMspProductName = (rawName) => {
+  const normalized = String(rawName || "").trim().toLowerCase();
+  return MSP_PRODUCT_ALIASES[normalized] || normalized;
+};
+
 function RequestForm({ product, onClose }) {
   const [formData, setFormData] = useState({
     quantity: "",
@@ -15,7 +37,7 @@ function RequestForm({ product, onClose }) {
   const [loading, setLoading] = useState(false);
   const [mspInfo, setMspInfo] = useState({ loading: true, price: null, error: "", required: false });
 
-  const normalizedProduct = useMemo(() => String(product.name || "").trim().toLowerCase(), [product.name]);
+  const normalizedProduct = useMemo(() => resolveMspProductName(product.name), [product.name]);
 
   useEffect(() => {
     const loadMsp = async () => {
@@ -31,7 +53,7 @@ function RequestForm({ product, onClose }) {
         }
 
         try {
-          const data = await fetchMspByProduct(product.name);
+          const data = await fetchMspByProduct(normalizedProduct);
           setMspInfo({ loading: false, price: Number(data?.price), error: "", required: true });
         } catch {
           setMspInfo({
