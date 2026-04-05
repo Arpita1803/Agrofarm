@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OrderDetails from '../../components/orders/OrderDetails';
 import { fetchMyOrders, updateOrderStatus } from '../../services/orderApi';
+import { createReview } from '../../services/reviewApi';
 
 const statusFilterDefs = [
   { id: 'all', label: 'All Orders' },
@@ -59,6 +60,10 @@ function DealerOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: '', reviewText: '', photoUrls: [] });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const normalizeOrder = (order) => {
     const pricePerKg = Number(order.agreedPrice ?? order.pricePerKg ?? 0);
@@ -91,22 +96,25 @@ function DealerOrders() {
       lastUpdated: order.updatedAt || order.lastUpdated || order.createdAt || new Date().toISOString(),
       farmerId: order.farmerId,
       dealerId: order.dealerId,
+      statusHistory: order.statusHistory || [],
     };
   };
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const data = await fetchMyOrders();
-        const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
-        setOrders(normalized);
-      } catch (error) {
-        console.error('Failed to fetch dealer orders', error);
-        setOrders([]);
-      }
-    };
+  const loadOrders = async () => {
+    try {
+      const data = await fetchMyOrders();
+      const normalized = Array.isArray(data) ? data.map(normalizeOrder) : [];
+      setOrders(normalized);
+    } catch (error) {
+      console.error('Failed to fetch dealer orders', error);
+      setOrders([]);
+    }
+  };
 
+  useEffect(() => {
     loadOrders();
+    const intervalId = setInterval(loadOrders, 10000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Filter orders
@@ -128,7 +136,7 @@ function DealerOrders() {
     pendingOrders: orders.filter(o => o.status === 'placed').length
   };
 
-  const applyLocalStatus = (orderId, status) => {
+  const applyLocalStatus = (orderId, status, statusHistory) => {
     setOrders((prev) =>
       prev.map((o) =>
         o.id === orderId
@@ -137,6 +145,7 @@ function DealerOrders() {
               status,
               progress: statusProgressMap[status] ?? o.progress,
               lastUpdated: new Date().toISOString(),
+              statusHistory: statusHistory ?? o.statusHistory,
             }
           : o
       )
@@ -149,6 +158,7 @@ function DealerOrders() {
         status,
         progress: statusProgressMap[status] ?? prev.progress,
         lastUpdated: new Date().toISOString(),
+        statusHistory: statusHistory ?? prev.statusHistory,
       };
     });
   };
@@ -184,8 +194,9 @@ const handleRejectOrder = async (order) => {
     if (!window.confirm(`Reject order ${order.id}?`)) return;
 
     try {
-      await updateOrderStatus(order.id, 'cancelled');
-      applyLocalStatus(order.id, 'cancelled');
+      const response = await updateOrderStatus(order.id, 'cancelled');
+      applyLocalStatus(order.id, 'cancelled', response?.order?.statusHistory);
+      await loadOrders();
       alert(`Order ${order.id} rejected.`);
     } catch (error) {
       alert(error?.response?.data?.message || 'Failed to reject order');
@@ -196,13 +207,62 @@ const handleRejectOrder = async (order) => {
   const handleUpdateStatusFromDetails = async (status) => {
     if (!selectedOrder) return;
     try {
-      await updateOrderStatus(selectedOrder.id, status);
-      applyLocalStatus(selectedOrder.id, status);
+      const response = await updateOrderStatus(selectedOrder.id, status);
+      applyLocalStatus(selectedOrder.id, status, response?.order?.statusHistory);
+      await loadOrders();
       alert(`Order status updated to ${status}.`);
       setShowOrderDetails(false);
       setSelectedOrder(null);
     } catch (error) {
       alert(error?.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+
+  const toDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const openReviewModal = (order) => {
+    setReviewOrder(order);
+    setReviewForm({ rating: '', reviewText: '', photoUrls: [] });
+    setShowReviewModal(true);
+  };
+
+  const handleReviewFileChange = async (event) => {
+    try {
+      const files = Array.from(event.target.files || []).slice(0, 3);
+      const dataUrls = await Promise.all(files.map((file) => toDataUrl(file)));
+      setReviewForm((prev) => ({ ...prev, photoUrls: dataUrls }));
+    } catch (error) {
+      alert('Failed to read image files');
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewOrder) return;
+
+    try {
+      setReviewSubmitting(true);
+      await createReview({
+        orderId: reviewOrder.id,
+        rating: Number(reviewForm.rating),
+        reviewText: reviewForm.reviewText,
+        photoUrls: reviewForm.photoUrls,
+      });
+      alert('Review submitted successfully');
+      setShowReviewModal(false);
+      setReviewOrder(null);
+      setReviewForm({ rating: '', reviewText: '', photoUrls: [] });
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -467,6 +527,15 @@ const handleRejectOrder = async (order) => {
                     </button>
                   )}
                 </div>
+
+                {order.status === 'delivered' && (
+                  <button
+                    onClick={() => openReviewModal(order)}
+                    className="w-full mt-2 px-3 py-2 bg-yellow-50 text-yellow-800 rounded-lg text-sm hover:bg-yellow-100 transition duration-300"
+                  >
+                    ⭐ Rate & Review
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -481,6 +550,56 @@ const handleRejectOrder = async (order) => {
           </div>
         )}
       </main>
+
+
+      {showReviewModal && reviewOrder && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleSubmitReview} className="bg-white rounded-xl shadow-xl w-full max-w-xl p-5 space-y-4">
+            <h3 className="text-xl font-bold text-gray-900">Rate & Review Order</h3>
+            <p className="text-sm text-gray-600">Order: {reviewOrder.id} • {reviewOrder.product}</p>
+
+            <div>
+              <label className="block text-sm mb-1">Rating (0 to 10)</label>
+              <input
+                type="number"
+                min="0"
+                max="10"
+                step="0.1"
+                value={reviewForm.rating}
+                onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: e.target.value }))}
+                className="w-full border rounded-lg p-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Review (optional, any language)</label>
+              <textarea
+                rows="4"
+                value={reviewForm.reviewText}
+                onChange={(e) => setReviewForm((prev) => ({ ...prev, reviewText: e.target.value }))}
+                className="w-full border rounded-lg p-2"
+                placeholder="Write your detailed experience"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1">Upload Photos (optional, max 3)</label>
+              <input type="file" accept="image/*" multiple onChange={handleReviewFileChange} className="w-full" />
+              {reviewForm.photoUrls.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">{reviewForm.photoUrls.length} photo(s) selected</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setShowReviewModal(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+              <button disabled={reviewSubmitting} className="px-4 py-2 bg-yellow-600 text-white rounded-lg disabled:opacity-50">
+                {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Order Details Modal */}
       {showOrderDetails && selectedOrder && (
@@ -507,6 +626,10 @@ const handleRejectOrder = async (order) => {
           onReject={() => {
             setShowOrderDetails(false);
             handleRejectOrder(selectedOrder);
+          }}
+          onReview={() => {
+            setShowOrderDetails(false);
+            openReviewModal(selectedOrder);
           }}
         />
       )}

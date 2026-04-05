@@ -92,6 +92,31 @@ def train_and_predict(filtered_df):
     return round(predicted_price, 2), next_year
 
 
+@app.route("/catalog", methods=["GET"])
+def get_catalog():
+    if df.empty:
+        return jsonify({"error": "Dataset is not loaded correctly on server"}), 500
+
+    crops = (
+        df["crop"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .loc[lambda s: s != ""]
+        .unique()
+        .tolist()
+    )
+    crops.sort()
+
+    return jsonify(
+        {
+            "count": len(crops),
+            "crops": crops,
+        }
+    )
+
+
 @app.route("/predict-price", methods=["POST"])
 def predict_price():
     if df.empty:

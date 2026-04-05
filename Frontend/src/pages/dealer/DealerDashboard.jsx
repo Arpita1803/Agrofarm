@@ -4,6 +4,7 @@ import RequestForm from '../../components/dealer/RequestForm';
 import { fetchRequests } from '../../services/requestApi';
 import { fetchMyOrders } from '../../services/orderApi';
 import { fetchMyChats } from '../../services/chatApi';
+import { fetchMyReviewSummary } from '../../services/reviewApi';
 import { getCurrentUser } from '../../utils/roleGuard';
 
 const categories = [
@@ -152,17 +153,68 @@ const categories = [
   }
 ];
 
+const PRODUCT_BUCKETS = [
+  { id: "grp1", name: "A - D", icon: "🅰️", test: (ch) => ch >= "a" && ch <= "d" },
+  { id: "grp2", name: "E - H", icon: "🌿", test: (ch) => ch >= "e" && ch <= "h" },
+  { id: "grp3", name: "I - L", icon: "🌾", test: (ch) => ch >= "i" && ch <= "l" },
+  { id: "grp4", name: "M - P", icon: "🥬", test: (ch) => ch >= "m" && ch <= "p" },
+  { id: "grp5", name: "Q - T", icon: "🧺", test: (ch) => ch >= "q" && ch <= "t" },
+  { id: "grp6", name: "U - Z", icon: "🚜", test: (ch) => ch >= "u" && ch <= "z" },
+];
+
+const toDisplayName = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+
+const buildCategoriesFromDatasetCrops = (crops = []) => {
+  const unique = Array.from(
+    new Set(
+      (Array.isArray(crops) ? crops : [])
+        .map((c) => String(c || "").trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
+
+  if (unique.length === 0) return categories;
+
+  const bucketed = PRODUCT_BUCKETS.map((bucket) => ({
+    id: bucket.id,
+    name: bucket.name,
+    icon: bucket.icon,
+    products: [],
+  }));
+
+  unique.forEach((crop, index) => {
+    const firstChar = crop[0];
+    const targetBucket = PRODUCT_BUCKETS.find((bucket) => bucket.test(firstChar));
+    const bucketIndex = targetBucket ? PRODUCT_BUCKETS.indexOf(targetBucket) : bucketed.length - 1;
+    bucketed[bucketIndex].products.push({
+      id: `${bucketed[bucketIndex].id}-${index}`,
+      name: toDisplayName(crop),
+      image: "🌾",
+      description: "Synced from 5-year price dataset",
+    });
+  });
+
+  return bucketed.filter((bucket) => bucket.products.length > 0);
+};
+
 function DealerDashboard() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [categoriesData, setCategoriesData] = useState(categories);
   const [stats, setStats] = useState({
     myOpenRequests: 0,
     activeOrders: 0,
     chats: 0,
     unreadChats: 0,
+    avgRating: '0.00',
+    totalReviews: 0,
   });
 
   useEffect(() => {
@@ -174,10 +226,11 @@ function DealerDashboard() {
       }
 
       try {
-        const [requests, orders, chats] = await Promise.all([
+        const [requests, orders, chats, reviewSummary] = await Promise.all([
           fetchRequests(),
           fetchMyOrders(),
           fetchMyChats(),
+          fetchMyReviewSummary(),
         ]);
 
         const myOpenRequests = Array.isArray(requests)
@@ -198,6 +251,8 @@ function DealerDashboard() {
           activeOrders,
           chats: chatCount,
           unreadChats,
+          avgRating: reviewSummary?.avgRating || '0.00',
+          totalReviews: reviewSummary?.totalReviews || 0,
         });
       } catch (error) {
         console.error('Failed to load dealer dashboard stats', error);
@@ -209,7 +264,22 @@ function DealerDashboard() {
     return () => clearInterval(timer);
   }, [navigate]);
 
-  const filteredCategories = categories.filter(category =>
+  useEffect(() => {
+    const loadDatasetProducts = async () => {
+      try {
+        const response = await fetch("http://localhost:5001/catalog");
+        const data = await response.json();
+        if (!response.ok) return;
+        setCategoriesData(buildCategoriesFromDatasetCrops(data?.crops || []));
+      } catch (_error) {
+        // keep fallback categories when ML catalog is unavailable
+      }
+    };
+
+    loadDatasetProducts();
+  }, []);
+
+  const filteredCategories = categoriesData.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     category.products.some(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -327,7 +397,7 @@ function DealerDashboard() {
           Welcome back 👋
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white border rounded-xl p-4 shadow-sm">
             <p className="text-sm text-gray-600">My Open Requests</p>
             <p className="text-2xl font-bold text-gray-900">{stats.myOpenRequests}</p>
@@ -339,6 +409,11 @@ function DealerDashboard() {
           <div className="bg-white border rounded-xl p-4 shadow-sm">
             <p className="text-sm text-gray-600">My Chats</p>
             <p className="text-2xl font-bold text-gray-900">{stats.chats}</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4 shadow-sm">
+            <p className="text-sm text-gray-600">My Rating</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.avgRating}/10</p>
+            <p className="text-xs text-gray-500">{stats.totalReviews} reviews</p>
           </div>
         </div>
 
@@ -359,7 +434,7 @@ function DealerDashboard() {
               {category.icon} {category.name}
             </h3>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-rows-2 grid-flow-col auto-cols-[150px] sm:auto-cols-[170px] gap-3 overflow-x-auto pb-2">
               {category.products.map(product => (
                 <div
                   key={product.id}
@@ -367,7 +442,7 @@ function DealerDashboard() {
                     setSelectedProduct(product);
                     setShowRequestForm(true);
                   }}
-                  className="bg-gray-50 border rounded-xl p-4 cursor-pointer 
+                  className="bg-gray-50 border rounded-xl p-3 cursor-pointer 
                              hover:shadow-md hover:-translate-y-1 transition 
                              active:scale-95"
                 >
