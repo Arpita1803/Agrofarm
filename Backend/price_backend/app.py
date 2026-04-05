@@ -1,3 +1,4 @@
+from pathlib import Path
 from flask import Flask, request, jsonify
 import pandas as pd
 from sklearn.linear_model import LinearRegression
@@ -6,53 +7,70 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+DATASET_PATH = Path(__file__).with_name("MASTER_DATASET_FINAL.csv")
+
 
 def load_dataset():
-    raw_df = pd.read_csv("price_dataset.csv", sep="	", encoding="utf-8")
-    raw_df = pd.read_csv("price_dataset.csv", sep="\t", encoding="utf-8")
+    raw_df = pd.read_csv(DATASET_PATH, encoding="utf-8")
 
     # Normalize incoming headers (handles casing/extra spaces/BOM)
     normalized = {str(col): str(col).strip().lower() for col in raw_df.columns}
     df = raw_df.rename(columns=normalized).copy()
 
-    # Map the known variants used across different sheet exports
+    # Map known variants from different datasets
     rename_map = {
-        "crop_type": "crop",
-        "crop": "crop",
         "commodity": "crop",
-        "city": "district",
-        "district": "district",
-        "market": "district",
+        "crop": "crop",
+        "crop_type": "crop",
+        "state": "state",
         "month": "month",
+        "month_name": "month_name",
         "year": "year",
         "modal_price": "modal_price",
         "modal price": "modal_price",
-        "state": "state",
-        "season": "season",
     }
     df = df.rename(columns={c: rename_map[c] for c in df.columns if c in rename_map})
 
-    required = ["crop", "district", "month", "year", "modal_price"]
+    required = ["crop", "state", "year", "modal_price"]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(
             f"Dataset missing required columns: {missing}. Found columns: {list(df.columns)}"
         )
 
-    for text_col in ["crop", "district", "state", "season"]:
+    for text_col in ["crop", "state", "month_name"]:
         if text_col in df.columns:
             df[text_col] = df[text_col].astype(str).str.strip().str.lower()
+
+    # Build month number in a robust way.
+    if "month_name" in df.columns:
+        month_from_name = pd.to_datetime(df["month_name"], format="%B", errors="coerce").dt.month
+    else:
+        month_from_name = pd.Series(index=df.index, dtype="float64")
+
+    month_from_col = pd.Series(index=df.index, dtype="float64")
+    if "month" in df.columns:
+        month_text = df["month"].astype(str).str.strip()
+        month_from_col = pd.to_numeric(month_text, errors="coerce")
+
+        # Example: January-2021
+        missing_numeric = month_from_col.isna()
+        if missing_numeric.any():
+            parsed = pd.to_datetime(month_text[missing_numeric], format="%B-%Y", errors="coerce")
+            month_from_col.loc[missing_numeric] = parsed.dt.month
+
+    df["month"] = month_from_name.fillna(month_from_col)
 
     for num_col in ["month", "year", "modal_price"]:
         df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
 
-    return df.dropna(subset=required)
+    required_for_training = ["crop", "state", "month", "year", "modal_price"]
+    return df.dropna(subset=required_for_training)
 
 
 try:
     df = load_dataset()
 except Exception as exc:
-    # Keep startup error explicit in console while still allowing controlled JSON error response.
     print(f"Dataset load failed: {exc}")
     df = pd.DataFrame()
 
@@ -62,13 +80,13 @@ def validate_payload(payload):
         return "Invalid JSON payload"
 
     crop = str(payload.get("crop", "")).strip().lower()
-    district = str(payload.get("district", "")).strip().lower()
+    state = str(payload.get("state", "")).strip().lower()
     month_raw = payload.get("month")
 
     if not crop:
         return "crop is required"
-    if not district:
-        return "district is required"
+    if not state:
+        return "state is required"
 
     try:
         month = int(month_raw)
@@ -93,6 +111,17 @@ def train_and_predict(filtered_df):
     return round(predicted_price, 2), next_year
 
 
+@app.route("/prediction-options", methods=["GET"])
+def prediction_options():
+    if df.empty:
+        return jsonify({"error": "Dataset is not loaded correctly on server"}), 500
+
+    states = sorted(df["state"].dropna().unique().tolist())
+    crops = sorted(df["crop"].dropna().unique().tolist())
+
+    return jsonify({"states": states, "crops": crops})
+
+
 @app.route("/predict-price", methods=["POST"])
 def predict_price():
     if df.empty:
@@ -104,41 +133,19 @@ def predict_price():
         return jsonify({"error": error}), 400
 
     crop = str(data["crop"]).strip().lower()
-    district = str(data["district"]).strip().lower()
+    state = str(data["state"]).strip().lower()
     month = int(data["month"])
 
-    # Level 1: exact crop + district + month
     filtered = df[
         (df["crop"] == crop)
-        & (df["district"] == district)
+        & (df["state"] == state)
         & (df["month"] == month)
     ]
-    source_level = "district"
-
-    # Level 2: state fallback for same crop + month
-    if len(filtered) < 2 and "state" in df.columns:
-        states = df.loc[df["district"] == district, "state"].dropna().unique().tolist()
-        if states:
-            state_filtered = df[
-                (df["crop"] == crop)
-                & (df["state"].isin(states))
-                & (df["month"] == month)
-            ]
-            if len(state_filtered) >= 2:
-                filtered = state_filtered
-                source_level = "state"
-
-    # Level 3: global fallback for same crop + month
-    if len(filtered) < 2:
-        global_filtered = df[(df["crop"] == crop) & (df["month"] == month)]
-        if len(global_filtered) >= 2:
-            filtered = global_filtered
-            source_level = "global"
 
     if len(filtered) < 2:
         return jsonify(
             {
-                "error": "Not enough data for this crop+district+month",
+                "error": "Not enough data to predict for the selected crop, state and month.",
                 "required_min_samples": 2,
                 "found_samples": int(len(filtered)),
             }
@@ -152,10 +159,10 @@ def predict_price():
             "unit": "INR/quintal",
             "target_year": target_year,
             "sample_size": int(len(filtered)),
-            "source_level": source_level,
+            "source_level": "state",
             "input": {
                 "crop": crop,
-                "district": district,
+                "state": state,
                 "month": month,
             },
         }
