@@ -22,15 +22,25 @@ function RequestForm({ product, onClose }) {
       try {
         setMspInfo({ loading: true, price: null, error: "", required: false });
         const catalogData = await fetchMspCatalog();
-        const allowed = Array.isArray(catalogData) ? catalogData.map((item) => item.product) : [];
+        const catalog = Array.isArray(catalogData) ? catalogData : [];
+        const catalogItem = catalog.find((item) => String(item?.product || "").trim().toLowerCase() === normalizedProduct);
 
-        if (!allowed.includes(normalizedProduct)) {
+        if (!catalogItem) {
           setMspInfo({ loading: false, price: null, error: "MSP not applicable for this product", required: false });
           return;
         }
 
-        const data = await fetchMspByProduct(product.name);
-        setMspInfo({ loading: false, price: Number(data?.price), error: "", required: true });
+        try {
+          const data = await fetchMspByProduct(product.name);
+          setMspInfo({ loading: false, price: Number(data?.price), error: "", required: true });
+        } catch {
+          setMspInfo({
+            loading: false,
+            price: Number(catalogItem.price),
+            error: "",
+            required: true,
+          });
+        }
       } catch (error) {
         setMspInfo({
           loading: false,

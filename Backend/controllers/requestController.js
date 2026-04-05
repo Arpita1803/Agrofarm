@@ -3,7 +3,7 @@ import Request from "../models/Request.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import Msp from "../models/Msp.js";
-import { MSP_ALLOWED_PRODUCTS } from "../constants/mspCatalog.js";
+import { MSP_ALLOWED_PRODUCTS, MSP_CATALOG_2025_26 } from "../constants/mspCatalog.js";
 
 // Dealer creates request
 export const createRequest = async (req, res) => {
@@ -38,12 +38,11 @@ export const createRequest = async (req, res) => {
 
     if (MSP_ALLOWED_PRODUCTS.has(normalizedProduct)) {
       const msp = await Msp.findOne({ product: normalizedProduct }).select("price");
-      if (!msp) {
-        return res.status(400).json({ message: "MSP not set for this product. Contact admin." });
-      }
+      const catalogMsp = MSP_CATALOG_2025_26.find((item) => item.product === normalizedProduct);
+      const effectiveMspPrice = Number(msp?.price ?? catalogMsp?.price);
 
-      if (numericMinPrice <= Number(msp.price)) {
-        return res.status(400).json({ message: `minPrice must be greater than MSP (₹${msp.price})` });
+      if (Number.isFinite(effectiveMspPrice) && numericMinPrice <= effectiveMspPrice) {
+        return res.status(400).json({ message: `minPrice must be greater than MSP (₹${effectiveMspPrice})` });
       }
     }
 
