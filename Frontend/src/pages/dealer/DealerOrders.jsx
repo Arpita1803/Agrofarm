@@ -559,11 +559,11 @@ const handleRejectOrder = async (order) => {
             <p className="text-sm text-gray-600">Order: {reviewOrder.id} • {reviewOrder.product}</p>
 
             <div>
-              <label className="block text-sm mb-1">Rating (0 to 10)</label>
+              <label className="block text-sm mb-1">Rating (0 to 5)</label>
               <input
                 type="number"
                 min="0"
-                max="10"
+                max="5"
                 step="0.1"
                 value={reviewForm.rating}
                 onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: e.target.value }))}

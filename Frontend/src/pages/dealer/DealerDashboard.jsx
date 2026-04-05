@@ -348,7 +348,7 @@ function DealerDashboard() {
           </div>
           <div className="bg-white border rounded-xl p-4 shadow-sm">
             <p className="text-sm text-gray-600">My Rating</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.avgRating}/10</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.avgRating}/5</p>
             <p className="text-xs text-gray-500">{stats.totalReviews} reviews</p>
           </div>
         </div>

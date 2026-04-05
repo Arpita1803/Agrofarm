@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 
-function RequestDetails({ request, onClose, onStartChat, onAcceptRequest }) {
-  const [isAccepting, setIsAccepting] = useState(false);
+function RequestDetails({ request, onClose, onStartChat }) {
 
   const formatDate = (dateString) => {
     if (!dateString) return "Not specified";
@@ -14,16 +13,6 @@ function RequestDetails({ request, onClose, onStartChat, onAcceptRequest }) {
   };
 
   const postedDate = request.createdAt || request.timestamp;
-
-  const handleAccept = async () => {
-    if (!onAcceptRequest || !request?._id) return;
-    try {
-      setIsAccepting(true);
-      await onAcceptRequest(request);
-    } finally {
-      setIsAccepting(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -58,11 +47,11 @@ function RequestDetails({ request, onClose, onStartChat, onAcceptRequest }) {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Quantity Required:</span>
-                  <span className="font-semibold">{request.quantity} kg</span>
+                  <span className="font-semibold">{request.quantity} quintal</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Price Range:</span>
-                  <span className="font-semibold">₹{request.minPrice} - ₹{request.maxPrice} per kg</span>
+                  <span className="font-semibold">₹{request.minPrice} - ₹{request.maxPrice} per quintal</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Required Date:</span>
@@ -107,14 +96,6 @@ function RequestDetails({ request, onClose, onStartChat, onAcceptRequest }) {
               className="flex-1 border border-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-50 transition duration-300"
             >
               Close
-            </button>
-
-            <button
-              onClick={handleAccept}
-              disabled={isAccepting}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-300 disabled:opacity-60"
-            >
-              {isAccepting ? "Accepting..." : "Accept Request"}
             </button>
 
             <button
