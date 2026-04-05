@@ -1,11 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function DealerPriceRecommendation() {
-  const [formData, setFormData] = useState({ crop: "", district: "", month: "" });
+  const [formData, setFormData] = useState({ crop: "", state: "", month: "" });
+  const [options, setOptions] = useState({ states: [], crops: [] });
   const [price, setPrice] = useState(null);
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const response = await fetch("http://localhost:5001/prediction-options");
+        const data = await response.json();
+
+        if (response.ok) {
+          setOptions({
+            states: data.states || [],
+            crops: data.crops || [],
+          });
+        }
+      } catch {
+        // Ignore option load errors and let manual input still work.
+      }
+    };
+
+    loadOptions();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,7 +42,7 @@ function DealerPriceRecommendation() {
     try {
       const payload = {
         crop: formData.crop.trim(),
-        district: formData.district.trim(),
+        state: formData.state.trim(),
         month: Number(formData.month),
       };
 
@@ -56,17 +77,44 @@ function DealerPriceRecommendation() {
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl shadow-xl border border-green-100 p-6">
           <h2 className="text-2xl font-bold text-gray-900">AI Price Prediction</h2>
-          <p className="text-sm text-gray-600 mt-1">Estimate mandi price by crop, district and month.</p>
+          <p className="text-sm text-gray-600 mt-1">Estimate mandi price by crop, state and month.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Crop</label>
-              <input type="text" name="crop" placeholder="e.g. Wheat" onChange={handleChange} required className="w-full border p-3 rounded-lg" />
+              <input
+                type="text"
+                name="crop"
+                list="crop-options"
+                value={formData.crop}
+                placeholder="e.g. Maize"
+                onChange={handleChange}
+                required
+                className="w-full border p-3 rounded-lg"
+              />
+              <datalist id="crop-options">
+                {options.crops.map((crop) => (
+                  <option key={crop} value={crop} />
+                ))}
+              </datalist>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-              <input type="text" name="district" placeholder="e.g. Pune" onChange={handleChange} required className="w-full border p-3 rounded-lg" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+              <select
+                name="state"
+                value={formData.state}
+                onChange={handleChange}
+                required
+                className="w-full border p-3 rounded-lg bg-white"
+              >
+                <option value="">Select state</option>
+                {options.states.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
