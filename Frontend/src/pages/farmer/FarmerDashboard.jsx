@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchRequests } from "../../services/requestApi";
 import { fetchMyOrders } from "../../services/orderApi";
 import { fetchMyChats } from "../../services/chatApi";
-import { createComplaint } from "../../services/complaintApi";
+import { createComplaint, fetchMyComplaints } from "../../services/complaintApi";
 import { fetchMyReviewSummary } from "../../services/reviewApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
 import LanguageSelection from "../../components/common/LanguageSelection";
@@ -21,6 +21,7 @@ function FarmerDashboard() {
   const [requestToChat, setRequestToChat] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [myOrders, setMyOrders] = useState([]);
+  const [myComplaints, setMyComplaints] = useState([]);
 
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [complaintData, setComplaintData] = useState({
@@ -76,9 +77,10 @@ function FarmerDashboard() {
       await loadRequests();
 
       try {
-        const [orders, chats, reviewSummary] = await Promise.all([fetchMyOrders(), fetchMyChats(), fetchMyReviewSummary()]);
+        const [orders, chats, reviewSummary, complaints] = await Promise.all([fetchMyOrders(), fetchMyChats(), fetchMyReviewSummary(), fetchMyComplaints()]);
         const orderList = Array.isArray(orders) ? orders : [];
         setMyOrders(orderList);
+        setMyComplaints(Array.isArray(complaints) ? complaints : []);
 
         const activeOrders = orderList.filter((o) => !["delivered", "cancelled"].includes(o?.status)).length;
         const chatCount = Array.isArray(chats) ? chats.length : 0;
@@ -146,6 +148,8 @@ function FarmerDashboard() {
       alert("Complaint submitted successfully");
       setComplaintData({ type: "website_related", orderId: "", title: "", description: "" });
       setShowComplaintModal(false);
+      const refreshed = await fetchMyComplaints();
+      setMyComplaints(Array.isArray(refreshed) ? refreshed : []);
     } catch (error) {
       alert(error?.response?.data?.message || "Failed to submit complaint");
     } finally {
@@ -202,6 +206,29 @@ function FarmerDashboard() {
       </div>
 
       <input type="text" placeholder="Search requests..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="mb-4 px-4 py-2 border rounded w-full max-w-md" />
+
+      <section className="mb-5 bg-white border rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold">My Complaints (Phase 9)</h3>
+          <span className="text-sm text-gray-500">{myComplaints.length}</span>
+        </div>
+        <div className="max-h-44 overflow-auto space-y-2">
+          {myComplaints.slice(0, 8).map((c) => (
+            <div key={c._id} className={`text-sm border rounded p-2 ${c.isOverdue ? "border-red-300 bg-red-50" : ""}`}>
+              <p className="font-medium">{c.title} <span className="text-xs text-gray-500">({c.trackingId || "N/A"})</span></p>
+              <p className="text-xs text-gray-600">{c.type} • {c.status} • {new Date(c.createdAt).toLocaleDateString("en-IN")}</p>
+              {c.dueAt && <p className="text-xs text-gray-600">Due: {new Date(c.dueAt).toLocaleDateString("en-IN")} {c.isOverdue ? "• OVERDUE" : ""}</p>}
+              {Array.isArray(c.messages) && c.messages.length > 0 && (
+                <p className="text-xs text-blue-700">Latest update: {c.messages[c.messages.length - 1]?.message}</p>
+              )}
+              {c.lastAdminMessageAt && (!c.lastUserMessageAt || new Date(c.lastAdminMessageAt).getTime() > new Date(c.lastUserMessageAt).getTime()) && (
+                <p className="text-xs text-indigo-700">Action needed: admin replied, please review.</p>
+              )}
+            </div>
+          ))}
+          {myComplaints.length === 0 && <p className="text-sm text-gray-500">No complaints raised yet.</p>}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {filteredRequests.map((request, index) => (

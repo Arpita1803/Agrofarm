@@ -25,4 +25,26 @@ export const MSP_CATALOG_2025_26 = [
 ];
 
 export const MSP_ALLOWED_PRODUCTS = new Set(MSP_CATALOG_2025_26.map((item) => item.product));
+export const MSP_PRODUCT_ALIASES = {
+  rice: "paddy common",
+  "corn (maize)": "maize",
+  "toor dal": "tur / arhar",
+  "tur dal": "tur / arhar",
+  "moong dal": "moong",
+  "urad dal": "urad",
+  "masoor dal": "lentil (masur)",
+  chickpeas: "gram (chana)",
+  "mustard seed": "rapeseed & mustard",
+  soybean: "soyabean (yellow)",
+  "sesame (til)": "sesamum",
+  cotton: "cotton medium staple",
+  "jowar (sorghum)": "jowar hybrid",
+  "ragi (finger millet)": "ragi",
+};
+
+export const resolveMspProductName = (rawName) => {
+  const normalized = String(rawName || "").trim().toLowerCase();
+  if (!normalized) return "";
+  return MSP_PRODUCT_ALIASES[normalized] || normalized;
+};
 export const ADMIN_SYSTEM_USER_ID = "000000000000000000000001";

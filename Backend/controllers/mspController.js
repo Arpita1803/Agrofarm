@@ -1,5 +1,5 @@
 import Msp from "../models/Msp.js";
-import { ADMIN_SYSTEM_USER_ID, MSP_ALLOWED_PRODUCTS, MSP_CATALOG_2025_26 } from "../constants/mspCatalog.js";
+import { ADMIN_SYSTEM_USER_ID, MSP_ALLOWED_PRODUCTS, MSP_CATALOG_2025_26, resolveMspProductName } from "../constants/mspCatalog.js";
 
 const ensureDefaultMsp = async () => {
   const count = await Msp.countDocuments();
@@ -62,12 +62,13 @@ export const getMspByProduct = async (req, res) => {
   try {
     const { product } = req.params;
     const normalizedProduct = String(product || "").trim().toLowerCase();
+    const canonicalProduct = resolveMspProductName(normalizedProduct) || normalizedProduct;
 
-    if (!normalizedProduct) {
+    if (!canonicalProduct) {
       return res.status(400).json({ message: "product is required" });
     }
 
-    const msp = await Msp.findOne({ product: normalizedProduct });
+    const msp = await Msp.findOne({ product: canonicalProduct });
     if (!msp) {
       return res.status(404).json({ message: "MSP not found for this product" });
     }
