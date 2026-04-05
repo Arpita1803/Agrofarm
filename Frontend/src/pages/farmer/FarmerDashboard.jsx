@@ -4,7 +4,7 @@ import { fetchRequests } from "../../services/requestApi";
 import { fetchMyOrders } from "../../services/orderApi";
 import { fetchMyChats } from "../../services/chatApi";
 import { createComplaint, fetchMyComplaints } from "../../services/complaintApi";
-import { fetchMyReviewSummary } from "../../services/reviewApi";
+import { fetchMyReceivedReviews, fetchMyReviewSummary } from "../../services/reviewApi";
 import RequestDetails from "../../components/farmer/RequestDetails";
 import LanguageSelection from "../../components/common/LanguageSelection";
 import { getCurrentUser } from "../../utils/roleGuard";
@@ -22,6 +22,7 @@ function FarmerDashboard() {
   const [showMenu, setShowMenu] = useState(false);
   const [myOrders, setMyOrders] = useState([]);
   const [myComplaints, setMyComplaints] = useState([]);
+  const [myReceivedReviews, setMyReceivedReviews] = useState([]);
 
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [complaintData, setComplaintData] = useState({
@@ -77,10 +78,17 @@ function FarmerDashboard() {
       await loadRequests();
 
       try {
-        const [orders, chats, reviewSummary, complaints] = await Promise.all([fetchMyOrders(), fetchMyChats(), fetchMyReviewSummary(), fetchMyComplaints()]);
+        const [orders, chats, reviewSummary, complaints, receivedReviews] = await Promise.all([
+          fetchMyOrders(),
+          fetchMyChats(),
+          fetchMyReviewSummary(),
+          fetchMyComplaints(),
+          fetchMyReceivedReviews(),
+        ]);
         const orderList = Array.isArray(orders) ? orders : [];
         setMyOrders(orderList);
         setMyComplaints(Array.isArray(complaints) ? complaints : []);
+        setMyReceivedReviews(Array.isArray(receivedReviews) ? receivedReviews : []);
 
         const activeOrders = orderList.filter((o) => !["delivered", "cancelled"].includes(o?.status)).length;
         const chatCount = Array.isArray(chats) ? chats.length : 0;
@@ -200,7 +208,7 @@ function FarmerDashboard() {
         <div className="bg-white p-4 rounded-xl border shadow-sm"><p className="text-sm text-gray-600">My Chats</p><p className="text-2xl font-bold">{stats.chats}</p></div>
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-sm text-gray-600">My Rating</p>
-          <p className="text-2xl font-bold">{stats.avgRating}/10</p>
+          <p className="text-2xl font-bold">{stats.avgRating}/5</p>
           <p className="text-xs text-gray-500">{stats.totalReviews} reviews</p>
         </div>
       </div>
@@ -209,7 +217,7 @@ function FarmerDashboard() {
 
       <section className="mb-5 bg-white border rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">My Complaints (Phase 9)</h3>
+          <h3 className="font-semibold">My Complaints</h3>
           <span className="text-sm text-gray-500">{myComplaints.length}</span>
         </div>
         <div className="max-h-44 overflow-auto space-y-2">
@@ -237,7 +245,7 @@ function FarmerDashboard() {
               <span className="text-2xl">{request?.productImage || "🌾"}</span>
               <h3 className="font-bold text-lg">{request?.product || "Unnamed Product"}</h3>
             </div>
-            <p className="text-sm">Quantity: {request?.quantity} kg</p>
+            <p className="text-sm">Quantity: {request?.quantity} quintal</p>
             <p className="text-sm">Price: {formatPrice(request)}</p>
             <p className="text-sm">Dealer: {request?.dealer || request?.dealerName || "Dealer"}</p>
             <p className="text-sm">Location: {request?.location || "India"}</p>
@@ -247,6 +255,28 @@ function FarmerDashboard() {
           </div>
         ))}
       </div>
+
+      <section className="mt-5 bg-white border rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold">Ratings Received</h3>
+          <span className="text-sm text-gray-500">{myReceivedReviews.length}</span>
+        </div>
+        <div className="space-y-2 max-h-48 overflow-auto">
+          {myReceivedReviews.slice(0, 8).map((review) => (
+            <div key={review._id} className="border rounded p-2 text-sm">
+              <p className="font-medium">
+                {review?.rating}/5
+                {review?.reviewerId?.name ? ` • By ${review.reviewerId.name}` : ""}
+              </p>
+              <p className="text-xs text-gray-600">
+                {review?.orderId?.product || "Order"} • {new Date(review.createdAt).toLocaleDateString("en-IN")}
+              </p>
+              {review?.reviewText && <p className="text-xs text-gray-700 mt-1">{review.reviewText}</p>}
+            </div>
+          ))}
+          {myReceivedReviews.length === 0 && <p className="text-sm text-gray-500">No ratings received yet.</p>}
+        </div>
+      </section>
 
       {showComplaintModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">

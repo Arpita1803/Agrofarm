@@ -118,7 +118,7 @@ function RequestForm({ product, onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4">
         <h2 className="text-xl font-bold text-gray-800">Request for {product.name}</h2>
-        <p className="text-sm text-gray-500">Set your buying range (per kg).</p>
+        <p className="text-sm text-gray-500">Set your buying range (per quintal).</p>
 
         <div className="text-sm rounded-lg px-3 py-2 border bg-gray-50">
           {mspInfo.loading && <span className="text-gray-600">Loading MSP...</span>}
@@ -133,7 +133,7 @@ function RequestForm({ product, onClose }) {
           )}
         </div>
 
-        <input type="number" name="quantity" placeholder="Quantity (kg)" value={formData.quantity} onChange={handleChange} className="w-full border rounded-lg p-2" required />
+        <input type="number" name="quantity" placeholder="Quantity (quintal)" value={formData.quantity} onChange={handleChange} className="w-full border rounded-lg p-2" required />
         <input type="number" name="minPrice" placeholder="Min Price" value={formData.minPrice} onChange={handleChange} className="w-full border rounded-lg p-2" required />
         <input type="number" name="maxPrice" placeholder="Max Price" value={formData.maxPrice} onChange={handleChange} className="w-full border rounded-lg p-2" required />
         <input type="date" name="requiredDate" value={formData.requiredDate} onChange={handleChange} className="w-full border rounded-lg p-2" />

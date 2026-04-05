@@ -174,7 +174,7 @@ function AdminDashboard() {
         </div>
 
         <section className="bg-white border rounded-xl p-4 shadow-sm">
-          <h2 className="font-semibold mb-3">Complaints Management (Phase 9)</h2>
+          <h2 className="font-semibold mb-3">Complaints Management</h2>
           <div className="flex flex-wrap gap-2 mb-3">
             <button onClick={handleExportCsv} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Export CSV</button>
             <button onClick={selectAllVisibleComplaints} className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Select / Unselect Visible</button>
@@ -332,7 +332,7 @@ function AdminDashboard() {
               <div key={item._id} className="border rounded-lg p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">
-                    {item?.orderId?.product || "Order"} • {Number(item.rating).toFixed(1)}/10
+                    {item?.orderId?.product || "Order"} • {Number(item.rating).toFixed(1)}/5
                   </p>
                   <select
                     value={item.moderationStatus || "visible"}

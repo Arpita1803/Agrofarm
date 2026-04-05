@@ -17,8 +17,8 @@ export const createReview = async (req, res) => {
     }
 
     const numericRating = Number(rating);
-    if (!Number.isFinite(numericRating) || numericRating < 0 || numericRating > 10) {
-      return res.status(400).json({ message: "rating must be a number between 0 and 10" });
+    if (!Number.isFinite(numericRating) || numericRating < 0 || numericRating > 5) {
+      return res.status(400).json({ message: "rating must be a number between 0 and 5" });
     }
 
     const order = await Order.findById(orderId).select("dealerId farmerId status");
